@@ -74,6 +74,22 @@ details[open]{display:grid;gap:8px}
 .field label{font-weight:800}
 .field input,.field select{width:100%;box-sizing:border-box}
 .field input[type=range]{padding:0}
+.fly{position:fixed;inset:0;z-index:50;background:#0b1030;touch-action:none;user-select:none}
+.fly canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.fly-hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;pointer-events:none}
+.fly-word{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.fly-word span{width:clamp(34px,6vw,54px);height:clamp(42px,7vw,62px);border-radius:12px;display:grid;place-items:center;font:800 clamp(1.4rem,3.6vw,2.2rem) var(--display);background:#ffffff1a;color:#ffffff55;border:3px dashed #ffffff44}
+.fly-word span.got{background:var(--glow);color:#2a2160;border:3px solid #fff;animation:pop .35s ease}
+.fly-word span.next{border-color:var(--mint);color:var(--mint)}
+.fly-time{font:800 1.3rem var(--body);color:var(--ink);font-variant-numeric:tabular-nums;background:#ffffff1a;border-radius:999px;padding:6px 14px}
+.fly-x{pointer-events:auto;background:#ffffff22;color:#fff;border-radius:50%;width:44px;height:44px;font-weight:800;font-size:1.1rem}
+.fly-msg{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font:400 clamp(2rem,7vw,4.5rem) var(--display);color:#fff;text-align:center;text-shadow:0 4px 0 #0006;pointer-events:none;white-space:nowrap}
+.fly-end{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:16px;background:#0b1030cc;padding:16px;text-align:center}
+.fly-stars{font-size:clamp(3rem,10vw,5rem);letter-spacing:.1em}
+.fly-endtxt{font:400 clamp(1.3rem,3.5vw,2rem) var(--display);color:#fff;max-width:600px}
+.fly-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.fly.shake canvas{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -223,6 +239,25 @@ dialog p{margin:0 0 12px;color:#5a5296}
   </section>
 </div>
 
+<div class="fly" id="fly" hidden>
+  <canvas id="fly-cv"></canvas>
+  <div class="fly-hud">
+    <div class="fly-word" id="fly-word" aria-live="polite"></div>
+    <div class="fly-time" id="fly-time">0.0 s</div>
+    <button type="button" class="fly-x" id="fly-x" aria-label="Spiel beenden">✕</button>
+  </div>
+  <div class="fly-msg" id="fly-msg"></div>
+  <div class="fly-end" id="fly-end" hidden>
+    <div class="fly-stars" id="fly-stars"></div>
+    <div class="fly-endtxt" id="fly-endtxt"></div>
+    <div class="fly-btns">
+      <button type="button" class="hbtn" id="fly-again">Nochmal</button>
+      <button type="button" class="hbtn" id="fly-new">Neues Wort</button>
+      <button type="button" class="hbtn ghost" id="fly-back">Zurück zu Luno</button>
+    </div>
+  </div>
+</div>
+
 <dialog id="dlg-games">
   <h2>Spiele mit Luno</h2>
   <p>Wähle ein Spiel. Luno erklärt es dir.</p>
@@ -232,6 +267,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <button class="game" data-game="farben"><span class="em">🎨</span><b>Farben finden</b><small>Welche Farbe hat die Banane?</small></button>
     <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
     <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
+    <button class="game" data-game="flug"><span class="em">🚀</span><b>Buchstaben-Flug</b><small>Fliege durchs All und sammle die Buchstaben!</small></button>
     <button class="game" data-game="geschichte"><span class="em">📖</span><b>Mitmach-Geschichte</b><small>Du entscheidest, wie es weitergeht.</small></button>
   </div>
   <div class="dlgbtns"><button class="hbtn ghost" id="games-close">Schließen</button></div>
@@ -555,6 +591,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     farben:"Spiel 'Farben finden': Frage nach der Farbe eines bekannten Gegenstands oder Tiers. Gib 3 Farben als Auswahl mit passendem Emoji.",
     reime:"Spiel 'Reim-Rakete': Nenne ein einfaches Wort und frage, was sich darauf reimt. Gib 3 Wörter als Auswahl, eins reimt sich.",
     wissen:"Spiel 'Warum-Fragen': Stelle eine spannende Warum-Frage über Natur, Tiere oder Weltraum, lass das Kind raten und erkläre danach ganz einfach.",
+    flug:"Buchstaben-Flug: Wähle ein einfaches deutsches Wort passend zum Gespräch oder zu etwas, das das Kind mag (Tier, Ding), für Alter 3-5 mit 3-4 Buchstaben, ab 6 Jahren 4-6 Buchstaben. Gib es im Feld \"spell\" zurück und sag im \"say\" kurz, dass es gleich losgeht.",
     geschichte:"Mitmach-Geschichte: Erzähle eine kleine Weltraum-Geschichte mit Luno, immer 2-3 Sätze, dann darf das Kind aus 3 Möglichkeiten wählen, wie es weitergeht."
   };
   function rules(){
@@ -581,6 +618,7 @@ Antworte NUR mit JSON in genau dieser Form:
 - "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
+- "spell": Ein einzelnes deutsches Wort (nur Buchstaben, z. B. "Mücke"), das das Kind im Spiel Buchstaben-Flug buchstabieren soll. Setze es, wenn das Kind das Spiel spielen will oder nach einem neuen Wort/Bild zustimmt, es zu buchstabieren. Nach einem gezeigten Bild oder neuen Wort darfst du ab und zu als Auswahl "Buchstaben-Flug!" anbieten. Sonst weglassen.
 - "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff für genau das Ding selbst, z. B. mosquito insect (nie Körperteile, Stiche, Verletzungen)","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Mosquito"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
   function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
@@ -726,6 +764,7 @@ Antworte NUR mit JSON in genau dieser Form:
       setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
       if(res?.star===true) celebrate();
       if(res?.image && typeof res.image==="object" && (res.image.what||res.image.wiki)) showImage(res.image);
+      if(res?.spell && /^[A-Za-zÄÖÜäöüß]{2,10}$/.test(String(res.spell).trim())) pendingSpell=String(res.spell).trim();
       if(Array.isArray(res?.remember)){ for(const f of res.remember){ const t=String(f).trim().slice(0,80); if(t && !facts.includes(t)) facts.push(t); }
         if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
       if(!cfg.name && res?.kid_name){ cfg.name=String(res.kid_name).trim().slice(0,20); store.set("cfg",cfg); renderHeader(); }
@@ -745,10 +784,99 @@ Antworte NUR mit JSON in genau dieser Form:
         if(!keyPromptShown){ keyPromptShown=true; $("#btn-parents").click(); setTimeout(()=>$("#p-akey").focus(),50); }
       }
     }finally{ busy=false; clearTimeout(filler); app.classList.remove("thinking"); }
+    if(pendingSpell){ const w=pendingSpell; pendingSpell=null; await speechDone(); startFlight(w); return; }
     if(said){ await speechDone(); if(cfg.auto && mode!=="claude" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
   }
   // remove links, file names and source notes before showing/speaking
   function cleanSay(t){ return String(t).replace(/https?:\/\/\S+/g,"").replace(/\b\S+\.(jpe?g|png|svg|gif|webp)\b/gi,"").replace(/\b(Quelle|Bild|Foto)\s*:\s*[^.!?]*/gi,"").replace(/\s{2,}/g," ").trim(); }
+  let pendingSpell=null;
+  /* ---------- Buchstaben-Flug ---------- */
+  const fly={on:false}; window.__lunoFly=fly;
+  const ALPHA="ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ".split("");
+  function sfx(type){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const n=actx.currentTime;
+    const tone=(f,t0,d,wave,vol)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type=wave; o.frequency.setValueAtTime(f,n+t0);
+      if(type==="bad") o.frequency.exponentialRampToValueAtTime(f*0.6,n+t0+d);
+      g.gain.setValueAtTime(.0001,n+t0); g.gain.exponentialRampToValueAtTime(vol,n+t0+.02); g.gain.exponentialRampToValueAtTime(.0001,n+t0+d);
+      o.connect(g).connect(actx.destination); o.start(n+t0); o.stop(n+t0+d+.05); };
+    if(type==="good"){ tone(784,0,.15,"triangle",.25); tone(1175,.08,.2,"triangle",.25); }
+    else if(type==="bad"){ tone(180,0,.35,"square",.12); }
+    else if(type==="tick"){ tone(660,0,.12,"sine",.2); }
+    else if(type==="win"){ [523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.3,"triangle",.22)); }
+  }catch{} }
+  function startFlight(word){
+    word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
+    const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true;
+    Object.assign(fly,{on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:0, y:0.5, x:0.18, targetY:0.5, stars:[], playing:false, raf:0, mistakes:0});
+    for(let i=0;i<80;i++) fly.stars.push({x:Math.random(),y:Math.random(),z:Math.random()*0.8+0.2});
+    const box=$("#fly-word"); box.replaceChildren(); [...word].forEach((ch,i)=>{ const sp=document.createElement("span"); sp.textContent=ch; if(i===0) sp.className="next"; box.append(sp); });
+    $("#fly-time").textContent="0.0 s";
+    const fit=()=>{ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; }; fit(); fly.fit=fit; addEventListener("resize",fit);
+    const pt=e=>{ const t=e.touches?e.touches[0]:e; fly.targetY=Math.min(.92,Math.max(.15,t.clientY/innerHeight)); fly.targetX=Math.min(.6,Math.max(.08,t.clientX/innerWidth)); };
+    el.onpointerdown=el.onpointermove=e=>{ if(e.pointerType==="mouse" && e.buttons===0 && e.type==="pointermove") { pt(e); return; } pt(e); };
+    el.ontouchmove=e=>{ e.preventDefault(); pt(e); };
+    fly.key=e=>{ if(e.key==="ArrowUp") fly.targetY=Math.max(.15,fly.targetY-.08); if(e.key==="ArrowDown") fly.targetY=Math.min(.92,fly.targetY+.08); }; addEventListener("keydown",fly.key);
+    const msg=$("#fly-msg");
+    const spelled=[...word].join(" – ");
+    msg.textContent=word; drawFly(ctx,cv,0);
+    sayChunk("Unser Wort ist: "+cap(word)+"."); sayChunk(spelled+"."); sayChunk(cap(word)+"! Sammle die Buchstaben in der richtigen Reihenfolge. Los geht's!");
+    Promise.race([speechDone(), new Promise(r=>setTimeout(r,14000))]).then(async()=>{ if(!fly.on) return; for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,700)); if(!fly.on) return; }
+      msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
+      fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
+    function loop(now){ if(!fly.on) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
+      $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      const speed=.22+fly.idx*.045+fly.t*.002; // gets faster
+      fly.y+= (fly.targetY-fly.y)*Math.min(1,dt*8); if(fly.targetX!==undefined) fly.x+=(fly.targetX-fly.x)*Math.min(1,dt*6);
+      fly.spawnIn-=dt; if(fly.spawnIn<=0){ fly.spawnIn=Math.max(.45,1.0-fly.idx*.06);
+        const need=fly.word[fly.idx]; const isNeed=Math.random()<0.45 || !fly.items.some(i=>i.ch===need);
+        let ch=need; if(!isNeed){ do{ ch=ALPHA[Math.floor(Math.random()*ALPHA.length)]; }while(ch===need); }
+        fly.items.push({ch, x:1.08, y:.18+Math.random()*.72, r:.045, wob:Math.random()*6, hue:Math.floor(Math.random()*360)}); }
+      for(const it of fly.items){ it.x-=speed*dt; it.wob+=dt*3; }
+      fly.items=fly.items.filter(it=>it.x>-0.1 && !it.hit);
+      const ar=cv.width/cv.height;
+      for(const it of fly.items){ const dx=(it.x-fly.x)*ar, dy=(it.y+Math.sin(it.wob)*.02)-fly.y; if(Math.hypot(dx,dy)<it.r+.05){ it.hit=true;
+        if(it.ch===fly.word[fly.idx]){ sfx("good"); const sp=$("#fly-word").children; sp[fly.idx].className="got"; fly.idx++;
+          if(sp[fly.idx]) sp[fly.idx].className="next"; sayChunk(it.ch);
+          if(fly.idx>=fly.word.length){ finish(); return; } }
+        else { sfx("bad"); fly.mistakes++; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); } } }
+      drawFly(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
+    function finish(){ fly.playing=false; const t=fly.t, n=fly.word.length;
+      const stars = t < n*3.5 ? 3 : t < n*6 ? 2 : 1;
+      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
+      $("#fly-end").hidden=false; sfx("win");
+      for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
+      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+": "+[...fly.word].join(" – ")+". "+(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
+    }
+  }
+  function cap(w){ w=String(w).toLowerCase(); return w.charAt(0).toUpperCase()+w.slice(1); }
+  function drawFly(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio;
+    ctx.fillStyle="#0b1030"; ctx.fillRect(0,0,W,H);
+    for(const s of fly.stars){ s.x-=dt*.08*s.z*(1+fly.idx*.2); if(s.x<0) s.x+=1; ctx.globalAlpha=.3+.6*s.z; ctx.fillStyle="#fff"; ctx.fillRect(s.x*W, s.y*H, 2*d*s.z, 2*d*s.z); }
+    ctx.globalAlpha=1;
+    const R=Math.min(W,H);
+    for(const it of fly.items){ const x=it.x*W, y=(it.y+Math.sin(it.wob)*.02)*H, r=it.r*R*1.1;
+      ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fillStyle="hsl("+it.hue+",80%,62%)"; ctx.fill(); ctx.lineWidth=4*d; ctx.strokeStyle="#fff"; ctx.stroke();
+      ctx.fillStyle="#2a2160"; ctx.font="800 "+Math.round(r*1.1)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(it.ch,x,y+r*.06); }
+    // rocket with Luno
+    const x=fly.x*W, y=fly.y*H, s=R*.06;
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.moveTo(-s*1.9,0); ctx.lineTo(-s*1.2,-s*.35); ctx.lineTo(-s*1.2,s*.35); ctx.fill();
+    ctx.fillStyle="#ff8a4c"; ctx.beginPath(); ctx.moveTo(-s*2.4+Math.random()*s*.3,0); ctx.lineTo(-s*1.5,-s*.22); ctx.lineTo(-s*1.5,s*.22); ctx.fill();
+    ctx.fillStyle="#e9e1ff"; ctx.beginPath(); ctx.ellipse(0,0,s*1.3,s*.75,0,0,7); ctx.fill();
+    ctx.fillStyle="#ff8a4c"; ctx.beginPath(); ctx.moveTo(s*1.25,-s*.3); ctx.quadraticCurveTo(s*1.9,0,s*1.25,s*.3); ctx.fill();
+    ctx.fillStyle="#5ee6c4"; ctx.beginPath(); ctx.moveTo(-s*.9,-s*.6); ctx.lineTo(-s*1.3,-s*1.1); ctx.lineTo(-s*.4,-s*.65); ctx.fill(); ctx.beginPath(); ctx.moveTo(-s*.9,s*.6); ctx.lineTo(-s*1.3,s*1.1); ctx.lineTo(-s*.4,s*.65); ctx.fill();
+    ctx.fillStyle="#bfe9ff"; ctx.beginPath(); ctx.arc(s*.35,-s*.05,s*.48,0,7); ctx.fill();
+    ctx.fillStyle="#f8c9a0"; ctx.beginPath(); ctx.arc(s*.35,-s*.02,s*.36,0,7); ctx.fill();
+    ctx.fillStyle="#3b2418"; ctx.beginPath(); ctx.arc(s*.35,-s*.18,s*.34,Math.PI,0); ctx.fill();
+    ctx.fillStyle="#2a2160"; ctx.beginPath(); ctx.arc(s*.24,-s*.02,s*.06,0,7); ctx.arc(s*.48,-s*.02,s*.06,0,7); ctx.fill();
+    ctx.restore();
+  }
+  function endFlight(){ fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
+  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
+  $("#fly-again").onclick=()=>{ const w=fly.word; endFlight(); startFlight(w); };
+  $("#fly-new").onclick=()=>{ endFlight(); send("Lass uns nochmal Buchstaben-Flug spielen, mit einem neuen Wort! "+GAMES.flug, true); };
+
   function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
