@@ -656,6 +656,7 @@ Antworte NUR mit JSON in genau dieser Form:
   }
   let imgNote="";
   // Claude looks at the picture: does it really show the thing, and is it fine for a small child?
+  let lastCheckErr="";
   async function imageIsOk(url, what){
     if(mode!=="api" || !cfg.akey) return null; // cannot check
     try{
@@ -663,7 +664,7 @@ Antworte NUR mit JSON in genau dieser Form:
         body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:5,messages:[{role:"user",content:[
           {type:"image",source:{type:"url",url}},
           {type:"text",text:'Ein '+(cfg.age||5)+'-jähriges Kind möchte "'+what+'" sehen. Zeigt dieses Bild deutlich und gut erkennbar genau das (das Ding selbst, nicht nur etwas Ähnliches oder Folgen davon)? Und ist es für kleine Kinder völlig unbedenklich: keine nackte Haut, keine Unterwäsche oder Badekleidung, keine Körperteile in Nahaufnahme, keine Verletzungen, kein Blut, keine Gewalt, nichts Gruseliges, kein Text im Mittelpunkt? Antworte nur mit JA oder NEIN.'}]}]})});
-      if(!r.ok) return null; // Claude could not load the picture: unknown
+      if(!r.ok){ lastCheckErr="Claude-Prüfung Fehler "+r.status; return null; } // Claude could not load the picture: unknown
       const t=((await r.json()).content||[]).map(c=>c.text||"").join("").trim().toUpperCase();
       return t.startsWith("JA");
     }catch{ return null; }
@@ -776,6 +777,16 @@ Antworte NUR mit JSON in genau dieser Form:
       try{ const l=await pixabayImages("tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort – Schlüssel prüfen"); }catch{ done(false,"keine Verbindung"); } })()); }
     { const done=row("Bilder Unsplash"); tasks.push((async()=>{ if(!cfg.ukey) return done(false,"kein Schlüssel eingetragen (optional)"); const s=t0();
       try{ const l=await unsplashImages("tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort – Access Key prüfen"); }catch{ done(false,"keine Verbindung"); } })()); }
+    { const done=row("Bild-Test komplett (Tiger)"); tasks.push((async()=>{ const s=t0();
+      try{
+        const lists=await Promise.all([cfg.pkey?pixabayImages("tiger animal").catch(()=>[]):[], cfg.ukey?unsplashImages("tiger animal").catch(()=>[]):[], wikiExact("de","Tiger").catch(()=>[])]);
+        const cands=[]; for(let i=0;i<3;i++) for(const l of lists) if(l[i]) cands.push(l[i]);
+        if(!cands.length) return done(false,"keine Bilder gefunden");
+        const c=cands[0]; const ok=await imageIsOk(c.src,"Tiger");
+        const chk= ok===true?"Prüfung JA": ok===false?"Prüfung NEIN": "Prüfung nicht möglich (zählt als OK bei "+c.src2+")";
+        const loaded=await new Promise(res=>{ const im=new Image(); im.referrerPolicy="no-referrer"; im.onload=()=>res(true); im.onerror=()=>res(false); setTimeout(()=>res(false),8000); im.src=c.src; });
+        done(loaded && (ok===true || (ok===null && c.src2!=="Wikipedia")), cands.length+" Kandidaten, erstes von "+c.src2+", "+chk+", Laden "+(loaded?"OK":"FEHLER")+" ("+ms(s)+")");
+      }catch(e){ done(false,"Fehler: "+e.message); } })()); }
     { const done=row("Bilder Wikipedia"); tasks.push((async()=>{ const s=t0(); try{ const l=await wikiExact("de","Tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort"); }catch{ done(false,"keine Verbindung"); } })()); }
     await Promise.all(tasks); };
   $("#p-link").onclick=async()=>{ readForm();
