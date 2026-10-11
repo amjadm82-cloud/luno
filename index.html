@@ -51,6 +51,12 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .kid .ears-glow{opacity:0;transition:opacity .2s}
 .happy .kid{animation:hop .5s ease 2}
 @keyframes hop{50%{transform:translateY(-40px) scale(1.04)}}
+.kid .sk{fill:var(--skin)}.kid .sk-s{stroke:var(--skin)}.kid .sk2{fill:var(--skin2)}.kid .hr{fill:var(--hair)}.kid .hr-s{stroke:var(--hair)}.kid .iris{fill:var(--eye)}
+.kid .hs{display:none}.kid[data-hair="spiky"] .hs-spiky,.kid[data-hair="fringe"] .hs-fringe,.kid[data-hair="curly"] .hs-curly{display:inline}
+.look{display:grid;grid-template-columns:1fr 1fr;gap:8px}.look label{font-size:.9rem}
+.who{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.who button{background:#fff;border:3px solid #e9e1ff;border-radius:20px;padding:16px;font:800 1.3rem var(--body);color:var(--cardInk)}
+.who button.on{border-color:var(--mint)}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -109,11 +115,11 @@ dialog p{margin:0 0 12px;color:#5a5296}
 
   <main class="stage" id="stage">
     <div class="bubble" id="bubble" aria-live="polite">Hallo! Ich bin Luno, ein kleiner Fußballstar. Drück auf den gelben Knopf und sag mir Hallo!</div>
-    <svg class="kid" id="kid" viewBox="0 0 240 340" role="img" aria-label="Luno, ein kleiner Fußballstar">
+    <svg class="kid" id="kid" data-hair="spiky" style="--skin:#f8c9a0;--skin2:#efb88f;--hair:#3b2418;--eye:#3b2a1e" viewBox="0 0 240 340" role="img" aria-label="Luno, ein kleiner Fußballstar">
       <ellipse cx="120" cy="330" rx="70" ry="8" fill="#00000040"/>
       <!-- legs: shorts, socks, boots -->
-      <rect x="94" y="262" width="20" height="40" rx="9" fill="#f8c9a0"/>
-      <rect x="126" y="262" width="20" height="40" rx="9" fill="#efb88f"/>
+      <rect x="94" y="262" width="20" height="40" rx="9" class="sk"/>
+      <rect x="126" y="262" width="20" height="40" rx="9" class="sk2"/>
       <rect x="92" y="282" width="24" height="26" rx="6" fill="#fff8ea"/>
       <rect x="124" y="282" width="24" height="26" rx="6" fill="#e9e1ff"/>
       <rect x="92" y="286" width="24" height="5" fill="#5ee6c4"/>
@@ -130,9 +136,9 @@ dialog p{margin:0 0 12px;color:#5a5296}
         <circle r="22" fill="none" stroke="#2a2160" stroke-width="2"/>
       </g>
       <!-- left arm (resting) -->
-      <path d="M82 196 C 70 210, 64 228, 66 246" stroke="#f8c9a0" stroke-width="18" fill="none" stroke-linecap="round"/>
+      <path d="M82 196 C 70 210, 64 228, 66 246" class="sk-s" stroke-width="18" fill="none" stroke-linecap="round"/>
       <path d="M84 192 C 74 200, 70 208, 68 216" stroke="#5ee6c4" stroke-width="24" fill="none" stroke-linecap="round"/>
-      <circle cx="66" cy="252" r="11" fill="#f8c9a0"/>
+      <circle cx="66" cy="252" r="11" class="sk"/>
       <!-- jersey -->
       <path d="M80 186 Q 120 172 160 186 L 162 248 Q 120 256 78 248 Z" fill="#5ee6c4"/>
       <path d="M140 182 Q 152 184 160 186 L 162 248 Q 150 251 140 252 Z" fill="#38b99b"/>
@@ -142,30 +148,39 @@ dialog p{margin:0 0 12px;color:#5a5296}
       <circle cx="140" cy="198" r="6" fill="#ffd36e"/>
       <!-- right arm (waving / thumbs up) -->
       <g class="wave">
-        <path d="M156 196 C 176 186, 188 168, 192 148" stroke="#f8c9a0" stroke-width="18" fill="none" stroke-linecap="round"/>
+        <path d="M156 196 C 176 186, 188 168, 192 148" class="sk-s" stroke-width="18" fill="none" stroke-linecap="round"/>
         <path d="M156 194 C 166 188, 172 182, 176 176" stroke="#5ee6c4" stroke-width="24" fill="none" stroke-linecap="round"/>
-        <circle cx="193" cy="140" r="12" fill="#f8c9a0"/>
-        <rect x="188" y="120" width="8" height="16" rx="4" fill="#f8c9a0"/>
+        <circle cx="193" cy="140" r="12" class="sk"/>
+        <rect x="188" y="120" width="8" height="16" rx="4" class="sk"/>
       </g>
       <!-- neck + head -->
-      <rect x="110" y="160" width="20" height="20" rx="6" fill="#efb88f"/>
-      <circle cx="60" cy="112" r="12" fill="#efb88f"/>
-      <circle cx="180" cy="112" r="12" fill="#efb88f"/>
+      <rect x="110" y="160" width="20" height="20" rx="6" class="sk2"/>
+      <circle cx="60" cy="112" r="12" class="sk2"/>
+      <circle cx="180" cy="112" r="12" class="sk2"/>
       <g class="ears-glow"><circle cx="58" cy="112" r="16" fill="none" stroke="#5ee6c4" stroke-width="4"/><circle cx="182" cy="112" r="16" fill="none" stroke="#5ee6c4" stroke-width="4"/></g>
-      <ellipse cx="120" cy="110" rx="60" ry="62" fill="#f8c9a0"/>
-      <!-- sporty hair: short sides, spiky top -->
-      <path d="M62 102 C 58 70, 80 48, 120 46 C 160 48, 182 70, 178 102 C 172 86, 166 80, 160 76 L 80 76 C 74 80, 68 86, 62 102 Z" fill="#3b2418"/>
-      <path d="M78 78 L 84 40 L 98 62 L 106 30 L 118 58 L 130 28 L 140 58 L 154 36 L 158 64 L 166 52 L 164 80 Z" fill="#3b2418"/>
-      <path d="M100 52 L 106 36 M126 48 L 130 34" stroke="#5a3a2a" stroke-width="3" stroke-linecap="round"/>
-      <!-- sweatband -->
-      <rect x="62" y="80" width="116" height="9" rx="4.5" fill="#ff8a4c"/>
+      <ellipse cx="120" cy="110" rx="60" ry="62" class="sk"/>
+      <!-- hair styles -->
+      <g class="hs hs-spiky">
+        <path class="hr" d="M62 102 C 58 70, 80 48, 120 46 C 160 48, 182 70, 178 102 C 172 86, 166 80, 160 76 L 80 76 C 74 80, 68 86, 62 102 Z"/>
+        <path class="hr" d="M78 78 L 84 40 L 98 62 L 106 30 L 118 58 L 130 28 L 140 58 L 154 36 L 158 64 L 166 52 L 164 80 Z"/>
+        <path d="M100 52 L 106 36 M126 48 L 130 34" stroke="#ffffff33" stroke-width="3" stroke-linecap="round"/>
+        <rect x="62" y="80" width="116" height="9" rx="4.5" fill="#ff8a4c"/>
+      </g>
+      <g class="hs hs-fringe">
+        <path class="hr" d="M58 108 C 52 66, 80 42, 120 42 C 160 42, 188 66, 182 108 C 180 98, 176 92, 170 90 L 160 86 L 150 92 L 140 86 L 130 93 L 120 86 L 110 93 L 100 86 L 90 92 L 80 87 L 70 91 C 64 94, 60 100, 58 108 Z"/>
+        <path d="M84 60 Q 100 52 116 56 M126 54 Q 144 52 158 62 M98 74 L 102 86 M122 72 L 122 86 M146 74 L 142 86" stroke="#ffffff30" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="hs hs-curly">
+        <path class="hr" d="M60 104 C 56 66, 82 46, 120 46 C 158 46, 184 66, 180 104 C 174 90, 166 84, 156 82 L 84 82 C 74 84, 66 90, 60 104 Z"/>
+        <g class="hr"><circle cx="70" cy="80" r="14"/><circle cx="84" cy="62" r="16"/><circle cx="104" cy="50" r="17"/><circle cx="126" cy="48" r="17"/><circle cx="148" cy="54" r="16"/><circle cx="166" cy="68" r="15"/><circle cx="174" cy="86" r="12"/><circle cx="92" cy="80" r="11"/><circle cx="114" cy="76" r="11"/><circle cx="136" cy="76" r="11"/><circle cx="156" cy="80" r="11"/></g>
+      </g>
       <!-- brows -->
-      <path d="M86 96 Q 98 89 110 95" stroke="#3b2418" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <path d="M130 95 Q 142 89 154 96" stroke="#3b2418" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M86 96 Q 98 89 110 95" class="hr-s" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M130 95 Q 142 89 154 96" class="hr-s" stroke-width="5" fill="none" stroke-linecap="round"/>
       <!-- eyes -->
       <g class="eyes">
         <ellipse cx="98" cy="114" rx="12" ry="15" fill="#fff"/><ellipse cx="142" cy="114" rx="12" ry="15" fill="#fff"/>
-        <circle cx="100" cy="117" r="8.5" fill="#3b2a1e"/><circle cx="144" cy="117" r="8.5" fill="#3b2a1e"/>
+        <circle cx="100" cy="117" r="8.5" class="iris"/><circle cx="144" cy="117" r="8.5" class="iris"/>
         <circle cx="103" cy="113" r="3.2" fill="#fff"/><circle cx="147" cy="113" r="3.2" fill="#fff"/>
       </g>
       <path d="M116 128 Q 120 134 124 128" stroke="#d98a6a" stroke-width="3" fill="none" stroke-linecap="round"/>
@@ -204,9 +219,17 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <button class="game" data-game="farben"><span class="em">🎨</span><b>Farben finden</b><small>Welche Farbe hat die Banane?</small></button>
     <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
     <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
+    <button class="game" data-game="fussball"><span class="em">⚽</span><b>Fußball-Quiz</b><small>Wie viele Spieler hat ein Team?</small></button>
     <button class="game" data-game="geschichte"><span class="em">📖</span><b>Mitmach-Geschichte</b><small>Du entscheidest, wie es weitergeht.</small></button>
   </div>
   <div class="dlgbtns"><button class="hbtn ghost" id="games-close">Schließen</button></div>
+</dialog>
+
+<dialog id="dlg-who">
+  <h2>Wer spielt mit Luno?</h2>
+  <p>Tippe auf deinen Namen.</p>
+  <div class="who" id="who-list"></div>
+  <div class="dlgbtns"><button class="hbtn ghost" id="who-close">Schließen</button></div>
 </dialog>
 
 <dialog id="dlg-parents">
@@ -214,10 +237,20 @@ dialog p{margin:0 0 12px;color:#5a5296}
   <p>Alle Angaben bleiben nur auf diesem Gerät gespeichert.</p>
   <form class="form" id="parents-form" method="dialog">
     <h3>Kind</h3>
+    <label for="p-kid">Welches Kind bearbeiten?</label>
+    <select id="p-kid"></select>
     <label for="p-name">Vorname</label>
     <input id="p-name" maxlength="20" placeholder="z. B. Lina">
     <label for="p-age">Alter</label>
     <select id="p-age"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+    <h3>Aussehen von Luno für dieses Kind</h3>
+    <div class="look">
+      <div class="form"><label for="p-hs">Frisur</label><select id="p-hs"><option value="spiky">Stachelfrisur</option><option value="fringe">Glatt mit Pony</option><option value="curly">Locken</option></select></div>
+      <div class="form"><label for="p-hair">Haarfarbe</label><select id="p-hair"><option value="#1f1612">Schwarz</option><option value="#3b2418">Dunkelbraun</option><option value="#7a5233">Hellbraun</option><option value="#a07a4c">Dunkelblond</option><option value="#d4ad6a">Blond</option><option value="#b5532d">Rot</option></select></div>
+      <div class="form"><label for="p-skin">Hautton</label><select id="p-skin"><option value="#f9dcc8|#efc8ae">Sehr hell</option><option value="#f6d2b8|#eabf9f">Hell</option><option value="#f8c9a0|#efb88f">Hell-warm</option><option value="#d9a476|#c98f62">Mittel</option><option value="#c08a5b|#ab774b">Oliv</option><option value="#8d5a3b|#7a4c30">Dunkel</option></select></div>
+      <div class="form"><label for="p-eye">Augenfarbe</label><select id="p-eye"><option value="#3b2a1e">Braun</option><option value="#1f150d">Dunkelbraun</option><option value="#6f7d76">Grau-grün</option><option value="#4a7bb0">Blau</option><option value="#4f7a4a">Grün</option></select></div>
+    </div>
+    <button type="button" class="hbtn ghost" id="p-addkid">+ Weiteres Kind hinzufügen</button>
     <label class="check"><input type="checkbox" id="p-auto" checked> Nach Lunos Antwort automatisch zuhören</label>
 
     <div id="api-box">
@@ -272,7 +305,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   let setupDone = false;
   try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
     if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["akey","gkey","okey","name","age","young","tts","model","auto"];
-      for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
+      for(const k of allowed.concat(["kids","active","look"])) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
   let turns = [];
@@ -296,7 +329,25 @@ dialog p{margin:0 0 12px;color:#5a5296}
 
   /* ---------- UI helpers ---------- */
   const app = $("#app");
-  function renderHeader(){ $("#stars-n").textContent = stars; $("#kid-name").textContent = cfg.name || "Kind"; }
+  /* ---------- kids + look ---------- */
+  const DEFLOOK = {hs:"spiky", hair:"#3b2418", skin:"#f8c9a0|#efb88f", eye:"#3b2a1e"};
+  if(!Array.isArray(cfg.kids) || !cfg.kids.length){ cfg.kids=[{name:cfg.name||"", age:cfg.age||5, look:cfg.look||DEFLOOK}]; cfg.active=0; }
+  cfg.active = Math.min(Math.max(0, cfg.active|0), cfg.kids.length-1);
+  function loadKid(i){ cfg.active=i; const k=cfg.kids[i]; cfg.name=k.name||""; cfg.age=k.age||5; cfg.look=Object.assign({},DEFLOOK,k.look||{}); }
+  function saveKid(){ cfg.kids[cfg.active]={name:cfg.name, age:cfg.age, look:cfg.look}; }
+  loadKid(cfg.active);
+  function applyLook(l){ l=Object.assign({},DEFLOOK,l||{}); const svg=$("#kid"); const [s1,s2]=l.skin.split("|");
+    svg.setAttribute("data-hair", l.hs); svg.style.setProperty("--skin",s1); svg.style.setProperty("--skin2",s2||s1);
+    svg.style.setProperty("--hair",l.hair); svg.style.setProperty("--eye",l.eye); }
+  function renderHeader(){ $("#stars-n").textContent = stars; $("#kid-name").textContent = cfg.name || "Kind"; applyLook(cfg.look); }
+  function openWho(){ const box=$("#who-list"); box.replaceChildren();
+    cfg.kids.forEach((k,i)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=k.name||("Kind "+(i+1)); if(i===cfg.active) b.className="on";
+      b.onclick=()=>{ if(i!==cfg.active){ loadKid(i); store.set("cfg",cfg); turns=[]; stopSpeaking(); renderHeader();
+        setBubble("Hallo "+(cfg.name||"")+"! Schön, dass du da bist. Drück auf den gelben Knopf und sag mir Hallo!");
+        renderChoices([{text:"Tier-Rätsel",emoji:"🦁"},{text:"Geschichte",emoji:"📖"},{text:"Fußball-Quiz",emoji:"⚽"}]); }
+        $("#dlg-who").close(); };
+      box.append(b); });
+    $("#dlg-who").showModal(); }
   function setBubble(text, thinking){ const b=$("#bubble"); b.textContent=text; b.classList.toggle("thinking",!!thinking); }
   function note(t){ $("#note").textContent = t||""; }
   function renderChoices(list){
@@ -446,6 +497,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     farben:"Spiel 'Farben finden': Frage nach der Farbe eines bekannten Gegenstands oder Tiers. Gib 3 Farben als Auswahl mit passendem Emoji.",
     reime:"Spiel 'Reim-Rakete': Nenne ein einfaches Wort und frage, was sich darauf reimt. Gib 3 Wörter als Auswahl, eins reimt sich.",
     wissen:"Spiel 'Warum-Fragen': Stelle eine spannende Warum-Frage über Natur, Tiere oder Weltraum, lass das Kind raten und erkläre danach ganz einfach.",
+    fussball:"Spiel 'Fußball-Quiz': Stelle eine einfache, kindgerechte Frage über Fußball (Regeln, Ball, Tor, Mannschaft, Positionen) ohne echte Spieler oder Vereine zu nennen. Gib 3 Antworten als Auswahl.",
     geschichte:"Mitmach-Geschichte: Erzähle eine kleine Weltraum-Geschichte mit Luno, immer 2-3 Sätze, dann darf das Kind aus 3 Möglichkeiten wählen, wie es weitergeht."
   };
   function rules(){
@@ -517,15 +569,25 @@ Antworte NUR mit JSON in genau dieser Form:
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
-  function fillForm(){ $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
+  function fillKidList(){ const sel=$("#p-kid"); sel.replaceChildren();
+    cfg.kids.forEach((k,i)=>sel.append(new Option(k.name||("Kind "+(i+1)), String(i)))); sel.value=String(cfg.active); }
+  function fillKid(){ const l=cfg.look; $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age);
+    $("#p-hs").value=l.hs; $("#p-hair").value=l.hair; $("#p-skin").value=l.skin; $("#p-eye").value=l.eye; }
+  function readKid(){ cfg.name=$("#p-name").value.trim(); cfg.age=+$("#p-age").value;
+    cfg.look={hs:$("#p-hs").value, hair:$("#p-hair").value, skin:$("#p-skin").value, eye:$("#p-eye").value}; saveKid(); }
+  ["#p-hs","#p-hair","#p-skin","#p-eye"].forEach(id=>$(id).addEventListener("change",()=>{ readKid(); applyLook(cfg.look); }));
+  $("#p-kid").onchange=()=>{ readKid(); loadKid(+$("#p-kid").value); fillKid(); applyLook(cfg.look); };
+  $("#p-addkid").onclick=()=>{ readKid(); cfg.kids.push({name:"", age:5, look:Object.assign({},DEFLOOK)}); loadKid(cfg.kids.length-1); fillKidList(); fillKid(); applyLook(cfg.look); $("#p-name").focus(); };
+  $("#p-name").addEventListener("input",()=>{ const o=$("#p-kid").selectedOptions[0]; if(o) o.textContent=$("#p-name").value||("Kind "+(cfg.active+1)); });
+  function fillForm(){ fillKidList(); fillKid(); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
     $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
-  function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), young:+$("#p-young").value};
+  function readForm(){ readKid(); Object.assign(cfg,{auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), young:+$("#p-young").value});
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-link").onclick=async()=>{ readForm();
-    const d={akey:cfg.akey,gkey:cfg.gkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const d={akey:cfg.akey,gkey:cfg.gkey,okey:cfg.okey,kids:cfg.kids,active:cfg.active,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
@@ -546,7 +608,8 @@ Antworte NUR mit JSON in genau dieser Form:
   $("#btn-games").onclick=()=>$("#dlg-games").showModal();
   $("#games-close").onclick=()=>$("#dlg-games").close();
   $("#btn-parents").onclick=()=>{ fillForm(); $("#dlg-parents").showModal(); };
-  $("#kid-pill").onclick=()=>$("#btn-parents").click();
+  $("#kid-pill").onclick=()=>{ if(cfg.kids.length>1) openWho(); else $("#btn-parents").click(); };
+  $("#who-close").onclick=()=>$("#dlg-who").close();
 
   renderHeader();
   if(setupDone) setBubble((cfg.name?"Hallo "+cfg.name+"! ":"Hallo! ")+"Ich bin Luno, ein kleiner Fußballstar. Drück auf den gelben Knopf und sag mir Hallo!");
