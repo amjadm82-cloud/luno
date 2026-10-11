@@ -248,7 +248,13 @@ dialog p{margin:0 0 12px;color:#5a5296}
   let cfg = Object.assign({}, DEF, store.get("cfg", {}));
   let stars = store.get("stars", 0);
   let turns = [];
-  let busy = false, mode = null, keyPromptShown = false; // "claude" (inside Claude) | "api" (own key)
+  let busy = false, mode = null, keyPromptShown = false;
+  // Server-Vermittler (hält die Schlüssel geheim). Leer = Schlüssel im Elternbereich eintragen.
+  const PROXY_URL = "";
+  let serverTts = "browser";
+  try{ const u=new URL(location.href); const c=u.searchParams.get("code");
+    if(c){ store.set("code", c); u.searchParams.delete("code"); history.replaceState(null,"",u.pathname+(u.search||"")+u.hash); } }catch{}
+  const accessCode = store.get("code", ""); // "claude" (inside Claude) | "api" (own key)
   let sample = null;
 
   /* ---------- starfield ---------- */
@@ -311,6 +317,12 @@ dialog p{margin:0 0 12px;color:#5a5296}
       speechSynthesis.speak(u);
     }catch{ res(); } }); }
   async function cloudAudio(text){
+    if(mode==="proxy"){
+      if(serverTts==="browser") return null;
+      const r=await fetch(PROXY_URL+"?action=tts",{method:"POST",headers:{"Content-Type":"application/json","X-Luno-Code":accessCode},
+        body:JSON.stringify({text,provider:serverTts,voice:cfg.ovoice||"coral"})});
+      if(!r.ok) throw new Error("Server "+r.status); return await r.blob();
+    }
     if(cfg.tts==="openai" && cfg.okey){
       const r=await fetch("https://api.openai.com/v1/audio/speech",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey,"Content-Type":"application/json"},
         body:JSON.stringify({model:"gpt-4o-mini-tts",voice:cfg.ovoice||"coral",input:text,response_format:"mp3",
@@ -407,10 +419,17 @@ Antworte NUR mit JSON in genau dieser Form:
     if(mode==="claude"){
       return await sample.json([{role:"user", content:rules()}, ...turns], {modelTier:"quick", cache:false});
     }
-    if(!cfg.akey){ const e=new Error("nokey"); e.code="nokey"; throw e; }
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
-      body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:500,system:rules(),messages:turns})});
-    if(!r.ok){ const e=new Error("api "+r.status); e.code=r.status===401?"badkey":r.status===429?"rate_limited":"upstream_error"; throw e; }
+    let r;
+    if(mode==="proxy"){
+      r=await fetch(PROXY_URL+"?action=chat",{method:"POST",headers:{"Content-Type":"application/json","X-Luno-Code":accessCode},
+        body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",system:rules(),messages:turns})});
+      if(!r.ok){ const e=new Error("proxy "+r.status); e.code=r.status===401?"badcode":r.status===429?"rate_limited":"upstream_error"; throw e; }
+    } else {
+      if(!cfg.akey){ const e=new Error("nokey"); e.code="nokey"; throw e; }
+      r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
+        body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:500,system:rules(),messages:turns})});
+      if(!r.ok){ const e=new Error("api "+r.status); e.code=r.status===401?"badkey":r.status===429?"rate_limited":"upstream_error"; throw e; }
+    }
     const j=await r.json(); return parseJSON((j.content||[]).map(c=>c.text||"").join(""));
   }
   async function send(text, hidden){
@@ -430,6 +449,7 @@ Antworte NUR mit JSON in genau dieser Form:
       turns.pop();
       const msg = {nokey:"Ich brauche noch meinen Funk zur Erde. Ein Erwachsener kann ihn im Elternbereich einschalten.",
         badkey:"Der Schlüssel im Elternbereich stimmt nicht.",
+        badcode:"Mein Funk-Code stimmt nicht. Bitte den Familien-Link nochmal öffnen.",
         not_granted:"Luno darf hier noch nicht denken. Bitte einen Erwachsenen, es zu erlauben.",
         sampling_disabled:"Luno ist für dieses Konto nicht verfügbar.", rate_limited:"Luno braucht eine kleine Pause. Gleich nochmal!",
         session_expired:"Bitte einen Erwachsenen, sich neu anzumelden."}[e?.code] ?? "Hoppla, mein Funk zur Erde ist gestört. Versuch es nochmal!";
@@ -440,7 +460,7 @@ Antworte NUR mit JSON in genau dieser Form:
         if(!keyPromptShown){ keyPromptShown=true; $("#btn-parents").click(); setTimeout(()=>$("#p-akey").focus(),50); }
       }
     }finally{ busy=false; }
-    if(said){ await speak(said); if(cfg.auto && mode==="api" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
+    if(said){ await speak(said); if(cfg.auto && mode!=="claude" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
   }
   function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
@@ -473,8 +493,14 @@ Antworte NUR mit JSON in genau dieser Form:
   renderHeader();
   (async()=>{
     if(window.claude?.use){ try{ sample = await claude.use("sample"); }catch{ sample=null; } }
-    mode = sample ? "claude" : "api";
-    $("#api-box").hidden = mode==="claude";
+    mode = sample ? "claude" : (PROXY_URL && accessCode ? "proxy" : "api");
+    $("#api-box").hidden = mode!=="api";
+    if(mode==="proxy"){
+      const tts=$("#p-tts"); tts.replaceChildren(new Option("Online-Stimme (natürlich)","server"), new Option("Gerätestimme","browser"));
+      if(cfg.tts!=="browser") cfg.tts="server";
+      try{ const r=await fetch(PROXY_URL+"?action=info",{method:"POST",headers:{"Content-Type":"application/json","X-Luno-Code":accessCode},body:"{}"});
+        if(r.ok){ serverTts=(await r.json()).tts||"browser"; } }catch{}
+    }
     if(mode==="claude"){ $("#p-auto").closest("label").hidden=true; }
   })();
 })();
