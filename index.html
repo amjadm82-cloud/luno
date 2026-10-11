@@ -414,7 +414,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     for(const c of (list||[]).slice(0,4)){
       const b=document.createElement("button"); b.className="choice";
       const e=document.createElement("span"); e.className="em"; e.textContent=c.emoji||"⭐";
-      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=>send(c.text);
+      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord() : send(c.text);
       box.append(b);
     }
   }
@@ -621,7 +621,16 @@ Antworte NUR mit JSON in genau dieser Form:
 - "spell": Ein einzelnes deutsches Wort (nur Buchstaben, z. B. "Mücke"), das das Kind im Spiel Buchstaben-Flug buchstabieren soll. Setze es, wenn das Kind das Spiel spielen will oder nach einem neuen Wort/Bild zustimmt, es zu buchstabieren. Nach einem gezeigten Bild oder neuen Wort darfst du ab und zu als Auswahl "Buchstaben-Flug!" anbieten. Sonst weglassen.
 - "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff für genau das Ding selbst, z. B. mosquito insect (nie Körperteile, Stiche, Verletzungen)","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Mosquito"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
-  function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
+  function parseJSON(t){ t=String(t||"");
+    try{ return JSON.parse(t); }catch{}
+    const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{}
+      try{ return JSON.parse(m[0].replace(/[“”„]/g,'"').replace(/,\s*([}\]])/g,"$1")); }catch{} }
+    // repair: pull the fields out one by one so no code is ever shown or spoken
+    const ps=partialSay(t); const out={say: ps? ps.text : t.replace(/[{}\[\]"]/g," "), choices:[]};
+    for(const mm of t.matchAll(/"text"\s*:\s*"([^"]{1,40})"\s*,\s*"emoji"\s*:\s*"([^"]{0,8})"/g)) out.choices.push({text:mm[1],emoji:mm[2]});
+    const sp=t.match(/"spell"\s*:\s*"([A-Za-zÄÖÜäöüß]{2,12})"/); if(sp) out.spell=sp[1];
+    if(/"star"\s*:\s*true/.test(t)) out.star=true;
+    return out; }
   async function callClaude(system, messages, maxTokens, model){
     if(mode==="claude"){
       const {text}=await sample([{role:"user", content:system}, ...messages], {modelTier: maxTokens>800?"default":"quick", cache:false}); return text;
@@ -708,7 +717,7 @@ Antworte NUR mit JSON in genau dieser Form:
     }catch{ return null; }
   }
   async function showImage(img){
-    const what=String(img.what||img.wiki||"").slice(0,60);
+    const what=String(img.what||img.wiki||"").slice(0,60); lastImageWord=String(img.what||"").split(/\s+/).pop();
     const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing");
     $("#sketch-title").textContent="Luno zeigt: "+what; $("#sketch-credit").textContent=""; $("#sketch-credit").removeAttribute("href");
     area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild"; area.append(wait);
@@ -742,6 +751,9 @@ Antworte NUR mit JSON in genau dieser Form:
 
   async function send(text, hidden){
     if(busy || !text) return;
+    if(awaitingWord && !hidden){ const words=String(text).replace(/[^A-Za-zÄÖÜäöüß\s]/g," ").trim().split(/\s+/).filter(w=>w.length>=2);
+      if(words.length && words.length<=3){ const w=words[words.length-1]; awaitingWord=false; startFlight(w); return; }
+      awaitingWord=false; }
     busy=true; note(""); stopSpeaking(); warmFillers();
     turns.push({role:"user", content:text}); if(turns.length>16) turns=turns.slice(-16); while(turns.length && turns[0].role!=="user") turns.shift();
     setBubble(hidden ? "Moment, ich hole das Spiel" : "Ich überlege", true); app.classList.add("thinking");
@@ -788,8 +800,21 @@ Antworte NUR mit JSON in genau dieser Form:
     if(said){ await speechDone(); if(cfg.auto && mode!=="claude" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
   }
   // remove links, file names and source notes before showing/speaking
-  function cleanSay(t){ return String(t).replace(/https?:\/\/\S+/g,"").replace(/\b\S+\.(jpe?g|png|svg|gif|webp)\b/gi,"").replace(/\b(Quelle|Bild|Foto)\s*:\s*[^.!?]*/gi,"").replace(/\s{2,}/g," ").trim(); }
-  let pendingSpell=null;
+  function cleanSay(t){ return String(t).replace(/\b(say|choices|text|emoji|star|remember|spell|image|what|wiki|wiki_en|en|kid_name|kid_age)\s*:/gi," ").replace(/[{}\[\]"]/g," ").replace(/https?:\/\/\S+/g,"").replace(/\b\S+\.(jpe?g|png|svg|gif|webp)\b/gi,"").replace(/\b(Quelle|Bild|Foto)\s*:\s*[^.!?]*/gi,"").replace(/\s{2,}/g," ").trim(); }
+  let pendingSpell=null, awaitingWord=false, lastImageWord="";
+  const WORDS_SHORT=["Hund","Ball","Maus","Haus","Auto","Mond","Baum","Igel","Ente","Kuh","Hase","Eis","Bus","Kuchen","Sonne","Katze","Fisch"];
+  const WORDS_LONG=["Rakete","Tiger","Zebra","Apfel","Biene","Pferd","Vogel","Stern","Blume","Banane","Giraffe","Pinguin","Delfin","Planet"];
+  function wordIdeas(){ const age=+cfg.age||5; const pool=(age<=5?WORDS_SHORT.filter(w=>w.length<=5):WORDS_SHORT.concat(WORDS_LONG)).slice();
+    const out=[]; const add=w=>{ w=String(w||"").replace(/[^A-Za-zÄÖÜäöüß]/g,""); if(w.length>=2 && w.length<=12 && !out.some(x=>x.toLowerCase()===w.toLowerCase())) out.push(cap(w)); };
+    if(lastImageWord) add(lastImageWord);
+    for(const f of facts){ const m=f.match(/:\s*([A-Za-zÄÖÜäöüß]{3,12})$/); if(m) add(m[1]); }
+    while(out.length<3 && pool.length) add(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+    return out.slice(0,3); }
+  async function chooseFlightWord(){ stopSpeaking(); awaitingWord=true; const ideas=wordIdeas();
+    setBubble("Buchstaben-Flug! Welches Wort wollen wir buchstabieren? Sag es mir oder tippe eins an!");
+    renderChoices(ideas.map(w=>({text:w,emoji:"🚀"})));
+    sayChunk("Buchstaben-Flug! Welches Wort wollen wir buchstabieren?"); sayChunk("Sag es mir oder tippe eins an!");
+    await speechDone(); if(awaitingWord && cfg.auto && mode!=="claude" && !listening) listen(); }
   /* ---------- Buchstaben-Flug ---------- */
   const fly={on:false}; window.__lunoFly=fly;
   const ALPHA="ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ".split("");
@@ -875,9 +900,9 @@ Antworte NUR mit JSON in genau dieser Form:
   function endFlight(){ fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
   $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
   $("#fly-again").onclick=()=>{ const w=fly.word; endFlight(); startFlight(w); };
-  $("#fly-new").onclick=()=>{ endFlight(); send("Lass uns nochmal Buchstaben-Flug spielen, mit einem neuen Wort! "+GAMES.flug, true); };
+  $("#fly-new").onclick=()=>{ endFlight(); chooseFlightWord(); };
 
-  function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
+  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord(); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"&&v!=="chirp"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
