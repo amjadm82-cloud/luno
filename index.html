@@ -373,6 +373,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
       <h3>Verbindungen prüfen</h3>
       <div class="hint">Prüft jeden Dienst einzeln und zeigt, was funktioniert. Bei Problemen ein Foto davon an Claude schicken.</div>
       <button type="button" class="hbtn ghost" id="p-diag">Alle Verbindungen testen</button>
+      <button type="button" class="hbtn ghost" id="p-abc">Alphabet anhören (Buchstaben prüfen)</button>
       <ul id="p-diagout" class="facts"></ul>
     </div>
 
@@ -963,21 +964,29 @@ Antworte NUR mit JSON in genau dieser Form:
   const LETTER_TRY={A:["A.","Ah!","Der Buchstabe A."],E:["E.","Eh!","Der Buchstabe E."],I:["I.","Ih!","Der Buchstabe I."],O:["O.","Oh!","Der Buchstabe O."],U:["U.","Uh!","Der Buchstabe U."],
     Ä:["Ä.","Äh!","Der Buchstabe Ä."],Ö:["Ö.","Öh!","Der Buchstabe Ö."],Ü:["Ü.","Üh!","Der Buchstabe Ü."],Y:["Ypsilon.","Der Buchstabe Ypsilon."]};
   // wie lange ist in der Aufnahme wirklich Stimme zu hören? (Sekunden)
-  async function voicedSeconds(blob){ try{ const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext; const oc=new OC(1,1,24000);
-      const buf=await oc.decodeAudioData(await blob.arrayBuffer()); const x=buf.getChannelData(0), win=Math.max(1,Math.round(buf.sampleRate*.01)); let n=0;
-      for(let i=0;i+win<=x.length;i+=win){ let e=0; for(let j=i;j<i+win;j++) e+=x[j]*x[j]; if(Math.sqrt(e/win)>0.02) n++; } return n*.01; }catch{ return 1; } }
+  // Analyse einer Aufnahme: wie viel Stimme (sec), in wie vielen Stücken (segs), wie lang von erstem bis letztem Laut (span)
+  async function audioShape(blob){ try{ const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext; const oc=new OC(1,1,24000);
+      const buf=await oc.decodeAudioData(await blob.arrayBuffer()); const x=buf.getChannelData(0), win=Math.max(1,Math.round(buf.sampleRate*.01)); let n=0, segs=0, gap=99, first=-1, last=-1, k=0;
+      for(let i=0;i+win<=x.length;i+=win,k++){ let e=0; for(let j=i;j<i+win;j++) e+=x[j]*x[j];
+        if(Math.sqrt(e/win)>0.02){ n++; if(gap>=12) segs++; gap=0; if(first<0) first=k; last=k; } else gap++; }
+      return {sec:n*.01, segs, span:first<0?0:(last-first+1)*.01}; }catch{ return {sec:1,segs:1,span:.5}; } }
+  async function voicedSeconds(blob){ return (await audioShape(blob)).sec; }
+  // Diese Buchstabennamen liest die Stimme manchmal wie eine Abkürzung (z. B. "Emm" als E-M-M) – im Satz nehmen wir den Buchstaben selbst
+  const RISKY={F:1,L:1,M:1,N:1,R:1,S:1,X:1};
   const DE_WIE={A:"Affe",B:"Ball",C:"Clown",D:"Dino",E:"Esel",F:"Fisch",G:"Giraffe",H:"Hund",I:"Igel",J:"Jojo",K:"Katze",L:"Löwe",M:"Maus",N:"Nase",O:"Oma",P:"Pinguin",Q:"Qualle",R:"Rakete",S:"Sonne",T:"Tiger",U:"Uhu",V:"Vogel",W:"Wal",X:"Xylofon",Y:"Yak",Z:"Zebra",Ä:"Äpfel",Ö:"Öl",Ü:"Überraschung"};
-  const Lsay=c=>DE_LETTER[c]||c, Lwie=c=>Lsay(c)+(DE_WIE[c]?", wie "+DE_WIE[c]:"");
+  const Lsay=c=>RISKY[c]?c:(DE_LETTER[c]||c), Lwie=c=>Lsay(c)+(DE_WIE[c]?", wie "+DE_WIE[c]:"");
   function spellDE(word){ return [...String(word).toUpperCase()].map(Lsay).join(". "); }
   const letterMem=new Map();
   function letterAudio(c){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
-    const key="ltr3."+(cfg.tts||"")+"."+c; if(letterMem.has(key)) return letterMem.get(key);
+    const key="ltr4."+(cfg.tts||"")+"."+c; if(letterMem.has(key)) return letterMem.get(key);
     const saved=store.get(key,null);
     if(saved){ try{ const bin=atob(saved.d), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); const p=Promise.resolve(new Blob([u],{type:saved.t})); letterMem.set(key,p); return p; }catch{} }
-    const tries=LETTER_TRY[c]||[Lsay(c)+".","Der Buchstabe "+Lsay(c)+"."];
+    const tries=LETTER_TRY[c]||[(DE_LETTER[c]||c)+".", c+".", "Der Buchstabe "+c+"."];
     const p=(async()=>{ let last=null;
-      for(const t of tries){ const b=await getAudio(t, 0.75); if(!b) break; last=b;
-        if(await voicedSeconds(b) >= 0.15){ const d=await blobToB64(b); if(d && d.length<60000) store.set(key,{d,t:b.type||"audio/mpeg"}); return b; } }
+      for(const t of tries){ const b=await getAudio(t, 0.75); if(!b) break; last=b; const sh=await audioShape(b);
+        const carrier=/^Der Buchstabe/.test(t), maxSegs=c==="Y"?3:1;
+        // genau EIN Laut (nicht stumm, nicht buchstabiert wie E-M-M); der Satz "Der Buchstabe ..." ist der sichere Rückfall
+        if(sh.sec>=0.15 && (carrier || (sh.segs<=maxSegs && sh.span<=(c==="Y"?1.6:1.0)))){ const d=await blobToB64(b); if(d && d.length<60000) store.set(key,{d,t:b.type||"audio/mpeg"}); return b; } }
       letterMem.delete(key); return last; })();
     letterMem.set(key,p); return p; }
   function hlLetter(i,on){ const sp=$("#fly-word")?.querySelectorAll("span"); if(sp&&sp[i]) sp[i].classList.toggle("say",on); }
@@ -1552,6 +1561,8 @@ Antworte NUR mit JSON in genau dieser Form:
     tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), ckey:$("#p-ckey").value.trim(), pkey:$("#p-pkey").value.trim(), aiimg:$("#p-aiimg").checked, ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
+  $("#p-abc").onclick=()=>{ readForm(); stopSpeaking(); try{ for(const k of Object.keys(localStorage)) if(/^luno\.ltr\d/.test(k) && !/^luno\.ltr4\./.test(k)) localStorage.removeItem(k); }catch{}
+    sayChunk("Das Alphabet:"); sayLetters("ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ"); };
   $("#p-diag").onclick=async()=>{ readForm(); const out=$("#p-diagout"); out.replaceChildren();
     const row=(name)=>{ const li=document.createElement("li"); li.textContent=name+": prüfe …"; out.append(li); return (ok,msg)=>{ li.textContent=(ok?"✅ ":"❌ ")+name+": "+msg; }; };
     const t0=()=>performance.now(), ms=s=>Math.round(performance.now()-s)+" ms";
