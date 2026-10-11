@@ -260,8 +260,8 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <h3>Stimme</h3>
     <label for="p-tts">Stimme von</label>
     <select id="p-tts">
-      <option value="gemini">Google Gemini – Leda (empfohlen)</option>
-      <option value="chirp">Google Chirp 3 HD – Leda (1 Mio. Zeichen/Monat gratis)</option>
+      <option value="chirp">Google Chirp 3 HD – Leda (empfohlen, 1 Mio. Zeichen/Monat gratis)</option>
+      <option value="gemini">Google Gemini – Leda (kindlicher, kleines Gratis-Limit)</option>
       <option value="browser">Gerät (kostenlos)</option>
       <option value="openai">OpenAI (natürlich)</option>
       <option value="eleven">ElevenLabs (sehr natürlich)</option>
@@ -303,7 +303,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     get(k, d){ try{ const v = localStorage.getItem("luno."+k); return v==null?d:JSON.parse(v);}catch{ return d; } },
     set(k, v){ try{ localStorage.setItem("luno."+k, JSON.stringify(v)); }catch{} }
   };
-  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"gemini", voice:"", gkey:"", young:7, okey:"", ovoice:"coral", ekey:"", evoice:""};
+  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"chirp", voice:"", gkey:"", young:7, okey:"", ovoice:"coral", ekey:"", evoice:""};
   let cfg = Object.assign({}, DEF, store.get("cfg", {}));
   // Familien-Link: #setup=... richtet das Gerät einmal ein (Schlüssel landen nur im Browser, nie im Code)
   const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -313,6 +313,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["aiimg","pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
+  if(cfg.tts==="gemini" && !store.get("mig.chirp",false)){ cfg.tts="chirp"; store.set("cfg",cfg); store.set("mig.chirp",true); }
   let stars = store.get("stars", 0);
   let facts = store.get("facts", []);
   let turns = [];
@@ -422,7 +423,10 @@ dialog p{margin:0 0 12px;color:#5a5296}
         body:JSON.stringify({text,provider:serverTts,voice:cfg.ovoice||"coral"})});
       if(!r.ok) throw new Error("Server "+r.status); return await r.blob();
     }
-    if(cfg.tts==="chirp" && (cfg.ckey||cfg.gkey)) return await chirpTTS(text);
+    if(cfg.tts==="chirp" && (cfg.ckey||cfg.gkey)){
+      try{ return await chirpTTS(text); }catch(e){ if(!cfg.gkey || Date.now()<geminiBlockedUntil) throw e;
+        try{ return await geminiTTS(text); }catch(e2){ if(/429/.test(String(e2.message))) geminiBlockedUntil=Date.now()+10*60000; throw new Error(/429/.test(String(e2.message))?"Google 429":"Chirp noch nicht freigeschaltet"); } }
+    }
     if(cfg.tts==="gemini" && cfg.gkey){
       if(Date.now()>geminiBlockedUntil){ try{ return await geminiTTS(text); }catch(e){ if(!/429/.test(String(e.message))) throw e; geminiBlockedUntil=Date.now()+10*60000; } }
       // Gemini limit reached: try Chirp 3 HD (same voice Leda) with the same Google key
