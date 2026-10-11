@@ -261,6 +261,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <label for="p-tts">Stimme von</label>
     <select id="p-tts">
       <option value="gemini">Google Gemini – Leda (empfohlen)</option>
+      <option value="chirp">Google Chirp 3 HD – Leda (1 Mio. Zeichen/Monat gratis)</option>
       <option value="browser">Gerät (kostenlos)</option>
       <option value="openai">OpenAI (natürlich)</option>
       <option value="eleven">ElevenLabs (sehr natürlich)</option>
@@ -268,7 +269,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div id="tts-browser"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
       <div class="hint">Tipp für Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
     <div id="tts-gemini" hidden><label for="p-gkey">Google Gemini API-Schlüssel</label><input id="p-gkey" type="password" placeholder="AIza…" autocomplete="off">
-      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey.</div></div>
+      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey. Für Chirp muss im selben Google-Projekt die „Cloud Text-to-Speech API“ aktiviert sein.</div></div>
     <div id="tts-openai" hidden><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-…" autocomplete="off">
       <label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div>
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
@@ -392,6 +393,16 @@ dialog p{margin:0 0 12px;color:#5a5296}
     w(0,"RIFF"); h.setUint32(4,36+u.length,true); w(8,"WAVEfmt "); h.setUint32(16,16,true); h.setUint16(20,1,true); h.setUint16(22,1,true);
     h.setUint32(24,24000,true); h.setUint32(28,48000,true); h.setUint16(32,2,true); h.setUint16(34,16,true); w(36,"data"); h.setUint32(40,u.length,true);
     return new Blob([h.buffer,u],{type:"audio/wav"}); }
+  async function chirpTTS(text){
+    const key=cfg.ckey||cfg.gkey;
+    const r=await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({input:{text},voice:{languageCode:"de-DE",name:"de-DE-Chirp3-HD-Leda"},audioConfig:{audioEncoding:"MP3",speakingRate:1.05}})});
+    if(!r.ok) throw new Error("Chirp "+r.status);
+    const j=await r.json(); if(!j.audioContent) throw new Error("Chirp leer");
+    const bin=atob(j.audioContent), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    return new Blob([u],{type:"audio/mpeg"});
+  }
+  let geminiBlockedUntil=0;
   async function geminiTTS(text){
     const H={"x-goog-api-key":cfg.gkey,"Content-Type":"application/json"};
     let r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:H,body:JSON.stringify({model:"gemini-3.8-flash-tts",
@@ -411,7 +422,12 @@ dialog p{margin:0 0 12px;color:#5a5296}
         body:JSON.stringify({text,provider:serverTts,voice:cfg.ovoice||"coral"})});
       if(!r.ok) throw new Error("Server "+r.status); return await r.blob();
     }
-    if(cfg.tts==="gemini" && cfg.gkey) return await geminiTTS(text);
+    if(cfg.tts==="chirp" && (cfg.ckey||cfg.gkey)) return await chirpTTS(text);
+    if(cfg.tts==="gemini" && cfg.gkey){
+      if(Date.now()>geminiBlockedUntil){ try{ return await geminiTTS(text); }catch(e){ if(!/429/.test(String(e.message))) throw e; geminiBlockedUntil=Date.now()+10*60000; } }
+      // Gemini limit reached: try Chirp 3 HD (same voice Leda) with the same Google key
+      try{ return await chirpTTS(text); }catch(e2){ throw new Error("Google 429"); }
+    }
     if(cfg.tts==="openai" && cfg.okey){
       const r=await fetch("https://api.openai.com/v1/audio/speech",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey,"Content-Type":"application/json"},
         body:JSON.stringify({model:"gpt-4o-mini-tts",voice:cfg.ovoice||"coral",input:text,response_format:"mp3",
@@ -698,7 +714,7 @@ Antworte NUR mit JSON in genau dieser Form:
   function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
-  function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
+  function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"&&v!=="chirp"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
