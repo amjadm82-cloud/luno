@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141a3d">
+<meta name="mobile-web-app-capable" content="yes">
+<style>*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<title>Luno Sternenfreund</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sniglet:wght@400;800&family=Nunito:wght@500;700;800&display=swap">
+<style>
+/* Layout: one-screen kids' app — night sky stage, Luno (cartoon space kid) center, speech bubble beside, big talk button + answer cards below */
+:root{
+  --sky:#141a3d; --sky2:#26206b; --glow:#ffd36e; --peach:#ff9f7a; --mint:#5ee6c4; --ink:#fff8ea; --dim:#b9b6e6; --card:#fff8ea; --cardInk:#2a2160;
+  --display:"Sniglet","Nunito",system-ui,sans-serif; --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:radial-gradient(120% 90% at 50% 0%,var(--sky2),var(--sky) 70%);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.planet{position:fixed;right:-8vmin;bottom:18vh;width:34vmin;height:34vmin;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffb59a,#e2607d 55%,#6b2a7a);box-shadow:0 0 60px #e2607d55;z-index:0}
+.planet::after{content:"";position:absolute;left:-18%;top:44%;width:136%;height:14%;border-radius:50%;border:3px solid #ffd36e88;transform:rotate(-14deg)}
+.app{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto 1fr auto;padding-inline:16px;padding-block:10px 14px;box-sizing:border-box;max-width:1100px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:6px;background:#ffffff18;border:2px solid #ffffff22;border-radius:999px;padding:6px 14px;font:800 1.05rem var(--body);color:var(--ink)}
+.pill b{color:var(--glow);font-variant-numeric:tabular-nums;font-size:1.25rem}
+.spacer{flex:1}
+button{font:inherit;cursor:pointer;border:0}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+.hbtn{background:var(--mint);color:#123;border-radius:999px;padding:9px 18px;font:800 1rem var(--body);box-shadow:0 4px 0 #2a9c84}
+.hbtn.ghost{background:#ffffff18;color:var(--ink);box-shadow:none;border:2px solid #ffffff22}
+.stage{position:relative;display:flex;align-items:center;justify-content:center;gap:clamp(8px,3vw,40px);min-height:0}
+.bubble{position:relative;background:var(--card);color:var(--cardInk);border-radius:28px;padding:16px 22px;max-width:min(460px,100%);font:400 clamp(1.15rem,2.5vw,1.55rem)/1.35 var(--display);box-shadow:0 8px 0 #0002;text-wrap:pretty;min-height:1.4em;order:2}
+.bubble::after{content:"";position:absolute;left:-14px;top:40px;border:14px solid transparent;border-right-color:var(--card);border-left:0}
+.bubble.thinking{color:#8a83c9}
+.kid{height:clamp(220px,52vh,440px);width:auto;max-width:45vw;animation:float 4s ease-in-out infinite;filter:drop-shadow(0 0 30px #ffd36e44);cursor:pointer;order:1;flex:none}
+@keyframes float{50%{transform:translateY(-10px)}}
+.kid .eyes{transform-box:fill-box;transform-origin:center;animation:blink 5s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.kid .wave{transform-box:fill-box;transform-origin:10% 90%;animation:wave 2.8s ease-in-out infinite}
+@keyframes wave{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-18deg)}80%{transform:rotate(6deg)}90%{transform:rotate(-14deg)}}
+.kid .antenna{transform-box:fill-box;transform-origin:bottom center;animation:wob 2.4s ease-in-out infinite}
+@keyframes wob{50%{transform:rotate(10deg)}}
+.kid .m-open{opacity:0}
+.talking .kid .m-open{animation:mo .26s steps(1) infinite}
+.talking .kid .m-closed{animation:mc .26s steps(1) infinite}
+@keyframes mo{0%{opacity:1}50%{opacity:0}}
+@keyframes mc{0%{opacity:0}50%{opacity:1}}
+.listening .kid .ears-glow{opacity:1}
+.kid .ears-glow{opacity:0;transition:opacity .2s}
+.happy .kid{animation:hop .5s ease 2}
+@keyframes hop{50%{transform:translateY(-40px) scale(1.04)}}
+.starburst{position:absolute;inset:0;pointer-events:none}
+.starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
+@keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
+.controls{display:flex;flex-direction:column;gap:10px;align-items:center}
+.choices{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
+.choice{background:var(--card);color:var(--cardInk);border-radius:22px;padding:10px 18px;font:800 clamp(1rem,2.1vw,1.3rem) var(--body);display:flex;align-items:center;gap:10px;box-shadow:0 6px 0 #c9b98f;min-height:58px;transition:transform .1s}
+.choice .em{font-size:1.8rem;line-height:1}
+.choice:active{transform:translateY(4px);box-shadow:0 2px 0 #c9b98f}
+.row{display:flex;gap:12px;align-items:center;width:100%;justify-content:center;flex-wrap:wrap}
+.mic{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe7a3,var(--glow) 60%,#e8a93a);box-shadow:0 6px 0 #b8822a;display:grid;place-items:center;flex:none}
+.mic svg{width:44px;height:44px}
+.mic.on{background:radial-gradient(circle at 35% 30%,#b9fff0,var(--mint) 60%,#2a9c84);box-shadow:0 6px 0 #1f7a67;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 6px 0 #1f7a67,0 0 0 0 #5ee6c4aa}100%{box-shadow:0 6px 0 #1f7a67,0 0 0 28px #5ee6c400}}
+.mic-label{font:800 1rem var(--display);color:var(--ink);text-align:center}
+.type{display:flex;gap:8px;flex:1;max-width:380px;min-width:0}
+.type input{flex:1;min-width:0;border-radius:999px;border:2px solid #ffffff33;background:#ffffff14;color:var(--ink);padding:12px 16px;font:700 1rem var(--body)}
+.type input::placeholder{color:var(--dim)}
+.type button{background:#ffffff22;color:var(--ink);border-radius:999px;padding:0 16px;font-weight:800}
+.note{font-size:.9rem;color:var(--dim);text-align:center;min-height:1.1em;max-width:640px}
+dialog{border:0;border-radius:28px;background:var(--card);color:var(--cardInk);padding:22px;max-width:min(600px,94vw);width:100%;box-sizing:border-box;max-height:90vh;overflow:auto}
+dialog::backdrop{background:#0b0d2acc}
+dialog h2{font:800 1.6rem var(--display);margin:0 0 4px}
+dialog h3{font:800 1.05rem var(--body);margin:16px 0 6px;color:#4b3fa8}
+dialog p{margin:0 0 12px;color:#5a5296}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.game{background:#fff;border:3px solid #e9e1ff;border-radius:20px;padding:14px;text-align:left;color:var(--cardInk);display:flex;flex-direction:column;gap:4px}
+.game .em{font-size:2.2rem}
+.game b{font:800 1.1rem var(--body)}
+.game small{color:#6b64a3;font-size:.85rem}
+.form{display:grid;gap:8px}
+.form label{font-weight:800}
+.form input,.form select{border:2px solid #d9d0ff;border-radius:14px;padding:10px 12px;font:700 1rem var(--body);color:var(--cardInk);background:#fff;min-width:0}
+.form .hint{font-size:.85rem;color:#6b64a3;margin:-2px 0 4px}
+.check{display:flex;gap:10px;align-items:center;font-weight:800}
+.check input{width:22px;height:22px}
+.dlgbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.dlgbtns .hbtn.ghost{color:var(--cardInk);border-color:#d9d0ff}
+@media (max-width:700px){.stage{flex-direction:column}.bubble{order:0}.bubble::after{left:50%;top:auto;bottom:-14px;margin-left:-14px;border:14px solid transparent;border-top-color:var(--card);border-bottom:0}.kid{height:clamp(170px,34vh,300px);max-width:70vw}}
+@media (max-height:560px){.kid{height:clamp(150px,44vh,260px)}.mic{width:74px;height:74px}.choice{min-height:48px;padding:6px 14px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="planet" aria-hidden="true"></div>
+
+<div class="app" id="app">
+  <header>
+    <div class="pill" aria-label="Gesammelte Sterne">⭐ <b id="stars-n">0</b></div>
+    <button class="pill" id="kid-pill">🚀 <span id="kid-name">Kind</span></button>
+    <div class="spacer"></div>
+    <button class="hbtn" id="btn-games">Spiele</button>
+    <button class="hbtn ghost" id="btn-parents">Eltern</button>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="bubble" id="bubble" aria-live="polite">Hallo! Ich bin Luno, ein Weltraumkind. Drück auf den gelben Knopf und sag mir Hallo!</div>
+    <svg class="kid" id="kid" viewBox="0 0 240 340" role="img" aria-label="Luno, ein Cartoon-Kind im Raumanzug">
+      <ellipse cx="120" cy="330" rx="64" ry="8" fill="#00000040"/>
+      <!-- backpack -->
+      <rect x="60" y="186" width="120" height="70" rx="22" fill="#38b99b"/>
+      <!-- legs + boots -->
+      <rect x="92" y="246" width="24" height="64" rx="11" fill="#f0743a"/>
+      <rect x="124" y="246" width="24" height="64" rx="11" fill="#e3622a"/>
+      <ellipse cx="102" cy="314" rx="20" ry="11" fill="#fff8ea"/>
+      <ellipse cx="138" cy="314" rx="20" ry="11" fill="#e9e1ff"/>
+      <rect x="84" y="306" width="36" height="5" rx="2" fill="#5ee6c4"/>
+      <rect x="120" y="306" width="36" height="5" rx="2" fill="#5ee6c4"/>
+      <!-- left arm (resting) -->
+      <path d="M82 200 C 66 214, 60 232, 62 252" stroke="#ff8a4c" stroke-width="22" fill="none" stroke-linecap="round"/>
+      <circle cx="62" cy="258" r="13" fill="#fff8ea"/>
+      <!-- torso -->
+      <rect x="74" y="178" width="92" height="88" rx="32" fill="#ff8a4c"/>
+      <path d="M140 180 C 158 186, 166 204, 166 230 L 166 240 C 166 256, 156 266, 140 266 Z" fill="#f0743a"/>
+      <rect x="74" y="236" width="92" height="11" fill="#2a2160"/>
+      <rect x="112" y="234" width="16" height="15" rx="4" fill="#ffd36e"/>
+      <circle cx="120" cy="208" r="17" fill="#2a2160"/>
+      <path d="M120 195 l4.2 8.6 9.4 1.3-6.8 6.6 1.6 9.3-8.4-4.4-8.4 4.4 1.6-9.3-6.8-6.6 9.4-1.3z" fill="#ffd36e"/>
+      <rect x="100" y="172" width="40" height="14" rx="7" fill="#e9e1ff"/>
+      <!-- right arm (waving) -->
+      <g class="wave">
+        <path d="M158 198 C 178 188, 190 170, 194 148" stroke="#ff8a4c" stroke-width="22" fill="none" stroke-linecap="round"/>
+        <circle cx="195" cy="140" r="14" fill="#fff8ea"/>
+        <rect x="186" y="122" width="7" height="14" rx="3.5" fill="#fff8ea" transform="rotate(-12 189 129)"/>
+      </g>
+      <!-- head -->
+      <circle cx="58" cy="112" r="13" fill="#f2b98d"/>
+      <circle cx="182" cy="112" r="13" fill="#f2b98d"/>
+      <g class="ears-glow"><circle cx="56" cy="112" r="17" fill="none" stroke="#5ee6c4" stroke-width="4"/><circle cx="184" cy="112" r="17" fill="none" stroke="#5ee6c4" stroke-width="4"/></g>
+      <circle cx="120" cy="108" r="62" fill="#f8c9a0"/>
+      <!-- antenna headband -->
+      <g class="antenna"><path d="M146 52 C 150 34, 162 26, 168 18" stroke="#2a2160" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="169" cy="16" r="8" fill="#5ee6c4"/></g>
+      <!-- hair -->
+      <path d="M58 104 C 50 60, 84 36, 120 38 C 160 38, 190 62, 182 104 C 176 88, 168 78, 156 72 C 150 82, 132 86, 116 80 C 104 90, 82 92, 70 84 C 64 90, 60 96, 58 104 Z" fill="#5a3322"/>
+      <path d="M98 44 C 104 30, 118 26, 126 34 C 128 26, 140 24, 146 32" stroke="#5a3322" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <path d="M80 70 C 92 66, 102 70, 108 78" stroke="#7a4a33" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- brows -->
+      <path d="M88 92 Q 98 86 108 91" stroke="#5a3322" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M132 91 Q 142 86 152 92" stroke="#5a3322" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- eyes -->
+      <g class="eyes">
+        <ellipse cx="98" cy="112" rx="13" ry="16" fill="#fff"/><ellipse cx="142" cy="112" rx="13" ry="16" fill="#fff"/>
+        <circle cx="100" cy="115" r="9" fill="#3b2a6e"/><circle cx="144" cy="115" r="9" fill="#3b2a6e"/>
+        <circle cx="103" cy="111" r="3.5" fill="#fff"/><circle cx="147" cy="111" r="3.5" fill="#fff"/>
+      </g>
+      <path d="M116 128 Q 120 133 124 128" stroke="#d98a6a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="82" cy="134" rx="11" ry="6.5" fill="#ff8f86" opacity=".55"/>
+      <ellipse cx="158" cy="134" rx="11" ry="6.5" fill="#ff8f86" opacity=".55"/>
+      <circle cx="78" cy="128" r="1.6" fill="#d98a6a"/><circle cx="86" cy="131" r="1.6" fill="#d98a6a"/><circle cx="154" cy="131" r="1.6" fill="#d98a6a"/><circle cx="162" cy="128" r="1.6" fill="#d98a6a"/>
+      <!-- mouth -->
+      <path class="m-closed" d="M106 142 Q 120 156 134 142" stroke="#8a3a3a" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <g class="m-open"><path d="M106 141 Q 120 141 134 141 Q 132 162 120 162 Q 108 162 106 141 Z" fill="#8a3a3a"/><path d="M111 153 Q 120 148 129 153 Q 126 160 120 160 Q 114 160 111 153 Z" fill="#ff8f86"/><rect x="111" y="141" width="18" height="5" rx="2" fill="#fff"/></g>
+    </svg>
+    <div class="starburst" id="burst"></div>
+  </main>
+
+  <section class="controls">
+    <div class="choices" id="choices">
+      <button class="choice" data-game="tiere"><span class="em">🦁</span>Tier-Rätsel</button>
+      <button class="choice" data-say="Erzähl mir eine kurze Geschichte!"><span class="em">📖</span>Geschichte</button>
+      <button class="choice" data-game="zaehlen"><span class="em">🔢</span>Zählen</button>
+    </div>
+    <div class="row">
+      <button class="mic" id="mic" aria-label="Mit Luno sprechen"><svg viewBox="0 0 24 24" fill="#2a2160"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 0 0-7 0v6A3.5 3.5 0 0 0 12 15Zm6-3.5a1 1 0 1 0-2 0 4 4 0 0 1-8 0 1 1 0 1 0-2 0 6 6 0 0 0 5 5.9V20H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.6a6 6 0 0 0 5-5.9Z"/></svg></button>
+      <form class="type" id="type-form" autocomplete="off">
+        <input id="type-in" placeholder="Oder hier schreiben …" aria-label="Nachricht an Luno">
+        <button type="submit">Senden</button>
+      </form>
+    </div>
+    <div class="note" id="note"></div>
+  </section>
+</div>
+
+<dialog id="dlg-games">
+  <h2>Spiele mit Luno</h2>
+  <p>Wähle ein Spiel. Luno erklärt es dir.</p>
+  <div class="games">
+    <button class="game" data-game="tiere"><span class="em">🦁</span><b>Tier-Rätsel</b><small>Luno beschreibt ein Tier, du rätst.</small></button>
+    <button class="game" data-game="zaehlen"><span class="em">🔢</span><b>Zählen im All</b><small>Sterne, Raketen und Planeten zählen.</small></button>
+    <button class="game" data-game="farben"><span class="em">🎨</span><b>Farben finden</b><small>Welche Farbe hat die Banane?</small></button>
+    <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
+    <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
+    <button class="game" data-game="geschichte"><span class="em">📖</span><b>Mitmach-Geschichte</b><small>Du entscheidest, wie es weitergeht.</small></button>
+  </div>
+  <div class="dlgbtns"><button class="hbtn ghost" id="games-close">Schließen</button></div>
+</dialog>
+
+<dialog id="dlg-parents">
+  <h2>Elternbereich</h2>
+  <p>Alle Angaben bleiben nur auf diesem Gerät gespeichert.</p>
+  <form class="form" id="parents-form" method="dialog">
+    <h3>Kind</h3>
+    <label for="p-name">Vorname</label>
+    <input id="p-name" maxlength="20" placeholder="z. B. Lina">
+    <label for="p-age">Alter</label>
+    <select id="p-age"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+    <label class="check"><input type="checkbox" id="p-auto" checked> Nach Lunos Antwort automatisch zuhören</label>
+
+    <div id="api-box">
+      <h3>KI (Claude)</h3>
+      <label for="p-akey">Anthropic API-Schlüssel</label>
+      <input id="p-akey" type="password" placeholder="sk-ant-…" autocomplete="off">
+      <div class="hint">Von console.anthropic.com → API Keys.</div>
+      <label for="p-model">Modell</label>
+      <select id="p-model"><option value="claude-haiku-5-5">Schnell (Haiku)</option><option value="claude-sonnet-5-5">Klüger (Sonnet)</option></select>
+    </div>
+
+    <h3>Stimme</h3>
+    <label for="p-tts">Stimme von</label>
+    <select id="p-tts">
+      <option value="browser">Gerät (kostenlos)</option>
+      <option value="openai">OpenAI (natürlich)</option>
+      <option value="eleven">ElevenLabs (sehr natürlich)</option>
+    </select>
+    <div id="tts-browser"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
+      <div class="hint">Tipp für Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
+    <div id="tts-openai" hidden><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-…" autocomplete="off">
+      <label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div>
+    <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
+      <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
+      <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
+    <div class="dlgbtns"><button type="button" class="hbtn ghost" id="p-test">Stimme testen</button><button type="button" class="hbtn ghost" id="p-reset">Neu starten</button><button class="hbtn" id="p-save">Speichern</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem("luno."+k); return v==null?d:JSON.parse(v);}catch{ return d; } },
+    set(k, v){ try{ localStorage.setItem("luno."+k, JSON.stringify(v)); }catch{} }
+  };
+  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"browser", voice:"", okey:"", ovoice:"coral", ekey:"", evoice:""};
+  let cfg = Object.assign({}, DEF, store.get("cfg", {}));
+  let stars = store.get("stars", 0);
+  let turns = [];
+  let busy = false, mode = null, keyPromptShown = false; // "claude" (inside Claude) | "api" (own key)
+  let sample = null;
+
+  /* ---------- starfield ---------- */
+  const cv = $("#stars"), cx = cv.getContext("2d"); let pts = [];
+  function size(){ cv.width = innerWidth*devicePixelRatio; cv.height = innerHeight*devicePixelRatio;
+    pts = Array.from({length:140},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,r:(Math.random()*1.6+.4)*devicePixelRatio,p:Math.random()*6})); }
+  function draw(t){ cx.clearRect(0,0,cv.width,cv.height);
+    for(const s of pts){ cx.globalAlpha=.35+.65*Math.abs(Math.sin(t/1400+s.p)); cx.fillStyle="#fff8ea"; cx.beginPath(); cx.arc(s.x,s.y,s.r,0,7); cx.fill(); }
+    if(!matchMedia("(prefers-reduced-motion: reduce)").matches) requestAnimationFrame(draw); }
+  addEventListener("resize", size); size(); requestAnimationFrame(draw);
+
+  /* ---------- UI helpers ---------- */
+  const app = $("#app");
+  function renderHeader(){ $("#stars-n").textContent = stars; $("#kid-name").textContent = cfg.name || "Kind"; }
+  function setBubble(text, thinking){ const b=$("#bubble"); b.textContent=text; b.classList.toggle("thinking",!!thinking); }
+  function note(t){ $("#note").textContent = t||""; }
+  function renderChoices(list){
+    const box=$("#choices"); box.replaceChildren();
+    for(const c of (list||[]).slice(0,4)){
+      const b=document.createElement("button"); b.className="choice";
+      const e=document.createElement("span"); e.className="em"; e.textContent=c.emoji||"⭐";
+      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=>send(c.text);
+      box.append(b);
+    }
+  }
+  function celebrate(){
+    stars++; store.set("stars",stars); renderHeader();
+    app.classList.remove("happy"); void app.offsetWidth; app.classList.add("happy");
+    const burst=$("#burst"); burst.replaceChildren();
+    for(let i=0;i<10;i++){ const s=document.createElement("span"); s.textContent="⭐";
+      const a=i/10*Math.PI*2; s.style.setProperty("--x",Math.cos(a)*180+"px"); s.style.setProperty("--y",Math.sin(a)*140+"px"); burst.append(s); }
+    chime();
+  }
+  let actx=null;
+  function chime(){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const n=actx.currentTime;
+    [660,880,1320].forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.frequency.value=f; o.type="triangle";
+      g.gain.setValueAtTime(.0001,n+i*.09); g.gain.exponentialRampToValueAtTime(.2,n+i*.09+.02); g.gain.exponentialRampToValueAtTime(.0001,n+i*.09+.25);
+      o.connect(g).connect(actx.destination); o.start(n+i*.09); o.stop(n+i*.09+.3); }); }catch{} }
+
+  /* ---------- voice out ---------- */
+  const player = new Audio(); let voices=[];
+  const clean = t => t.replace(/[\u{1F300}-\u{1FAFF}☀-➿️]/gu,"").trim();
+  function rankVoice(v){ const n=v.name.toLowerCase(); let s=0;
+    if(/neural|natural|premium|enhanced|online/.test(n)) s+=3; if(/google/.test(n)) s+=2; if(v.lang==="de-DE") s+=1; if(v.localService===false) s+=1; return s; }
+  function loadVoices(){ voices=(window.speechSynthesis?.getVoices?.()||[]).filter(v=>/^de/i.test(v.lang)).sort((a,b)=>rankVoice(b)-rankVoice(a));
+    const sel=$("#p-voice"); sel.replaceChildren();
+    for(const v of voices){ const o=document.createElement("option"); o.value=v.name; o.textContent=v.name+" ("+v.lang+")"; sel.append(o); }
+    if(!voices.length){ const o=document.createElement("option"); o.value=""; o.textContent="Keine deutsche Stimme gefunden"; sel.append(o); }
+    sel.value = voices.some(v=>v.name===cfg.voice) ? cfg.voice : (voices[0]?.name||""); }
+  if(window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+  function talking(on){ app.classList.toggle("talking", on); }
+  function stopSpeaking(){ try{ speechSynthesis.cancel(); }catch{} try{ player.pause(); }catch{} talking(false); }
+
+  function speakBrowser(text){ return new Promise(res=>{
+    if(!window.speechSynthesis){ res(); return; }
+    try{ speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text); u.lang="de-DE"; u.rate=1.0; u.pitch=1.12;
+      const v=voices.find(v=>v.name===cfg.voice)||voices[0]; if(v) u.voice=v;
+      u.onstart=()=>talking(true); u.onend=u.onerror=()=>{ talking(false); res(); };
+      speechSynthesis.speak(u);
+    }catch{ res(); } }); }
+  async function cloudAudio(text){
+    if(cfg.tts==="openai" && cfg.okey){
+      const r=await fetch("https://api.openai.com/v1/audio/speech",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey,"Content-Type":"application/json"},
+        body:JSON.stringify({model:"gpt-4o-mini-tts",voice:cfg.ovoice||"coral",input:text,response_format:"mp3",
+          instructions:"Sprich natürliches Hochdeutsch mit perfekter deutscher Aussprache, ohne englischen Akzent. Du bist ein fröhliches, neugieriges Kind aus einer Zeichentrickserie: warm, lebendig, etwas schneller und verspielt, mit echter Freude in der Stimme."})});
+      if(!r.ok) throw new Error("OpenAI "+r.status); return await r.blob();
+    }
+    if(cfg.tts==="eleven" && cfg.ekey && cfg.evoice){
+      const r=await fetch("https://api.elevenlabs.io/v1/text-to-speech/"+encodeURIComponent(cfg.evoice)+"?output_format=mp3_44100_128",{method:"POST",
+        headers:{"xi-api-key":cfg.ekey,"Content-Type":"application/json"},
+        body:JSON.stringify({text,model_id:"eleven_multilingual_v2",language_code:"de",voice_settings:{stability:.45,similarity_boost:.8,style:.35}})});
+      if(!r.ok) throw new Error("ElevenLabs "+r.status); return await r.blob();
+    }
+    return null;
+  }
+  async function speak(text){
+    text=clean(text); if(!text) return;
+    stopSpeaking();
+    if(cfg.tts!=="browser"){
+      try{ const blob=await cloudAudio(text);
+        if(blob){ return await new Promise(res=>{ const url=URL.createObjectURL(blob); player.src=url;
+          player.onplay=()=>talking(true); player.onended=player.onerror=()=>{ talking(false); URL.revokeObjectURL(url); res(); };
+          player.play().catch(()=>{ talking(false); res(); }); }); }
+      }catch(e){ note("Die Online-Stimme ging nicht ("+e.message+"). Ich nehme die Gerätestimme."); }
+    }
+    return speakBrowser(text);
+  }
+
+  /* ---------- voice in ---------- */
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null, listening=false, mediaRec=null;
+  function setListening(on){ listening=on; $("#mic").classList.toggle("on",on); app.classList.toggle("listening",on); }
+  function micBlocked(){ note(mode==="claude"
+    ? "Innerhalb von Claude ist das Mikrofon gesperrt. Zum Sprechen die eigenständige Luno-Version im Chrome öffnen."
+    : "Das Mikrofon ist gesperrt. Bitte in Chrome beim Schloss-Symbol neben der Adresse das Mikrofon erlauben."); }
+  function listen(){
+    if(busy) return;
+    if(listening){ rec?.stop(); if(mediaRec?.state==="recording") mediaRec.stop(); return; }
+    stopSpeaking();
+    if(SR) return listenSR();
+    if(cfg.okey && navigator.mediaDevices?.getUserMedia && window.MediaRecorder) return listenRecord();
+    note("Spracheingabe braucht Google Chrome. Tippe sonst auf eine Antwort.");
+  }
+  function listenSR(){
+    rec=new SR(); rec.lang="de-DE"; rec.interimResults=true; rec.maxAlternatives=1; rec.continuous=false;
+    let finalText="", blocked=false;
+    rec.onstart=()=>{ setListening(true); note("Ich höre zu …"); };
+    rec.onresult=e=>{ finalText=[...e.results].map(r=>r[0].transcript).join(" "); note("„"+finalText+"“"); };
+    rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){ blocked=true; micBlocked(); }
+      else if(e.error==="no-speech") note("Ich habe nichts gehört. Drück nochmal auf den Knopf!"); };
+    rec.onend=()=>{ setListening(false); if(finalText.trim()){ note(""); send(finalText.trim()); } else if(!blocked && !$("#note").textContent) note(""); };
+    try{ rec.start(); }catch{ micBlocked(); }
+  }
+  async function listenRecord(){
+    let stream; try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }catch{ micBlocked(); return; }
+    const chunks=[]; mediaRec=new MediaRecorder(stream);
+    mediaRec.ondataavailable=e=>chunks.push(e.data);
+    mediaRec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); setListening(false); note("Einen Moment …");
+      try{ const fd=new FormData(); fd.append("file",new Blob(chunks,{type:mediaRec.mimeType||"audio/webm"}),"rede.webm"); fd.append("model","gpt-4o-mini-transcribe"); fd.append("language","de");
+        const r=await fetch("https://api.openai.com/v1/audio/transcriptions",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey},body:fd});
+        const j=await r.json(); note(""); if(j.text?.trim()) send(j.text.trim()); else note("Ich habe nichts verstanden. Nochmal?");
+      }catch{ note("Ich habe nichts verstanden. Nochmal?"); } };
+    mediaRec.start(); setListening(true); note("Ich höre zu … Drück nochmal, wenn du fertig bist.");
+    setTimeout(()=>{ if(mediaRec?.state==="recording") mediaRec.stop(); }, 8000);
+  }
+  $("#mic").onclick=listen;
+
+  /* ---------- AI ---------- */
+  const GAMES = {
+    tiere:"Spiel 'Tier-Rätsel': Beschreibe ein Tier in 1-2 kurzen Sätzen (Aussehen, Geräusch, wo es lebt), ohne den Namen zu sagen. Gib 3 Tiere als Auswahl mit Emoji, eins davon richtig.",
+    zaehlen:"Spiel 'Zählen im All': Stelle eine Zählaufgabe mit Weltraum-Dingen (Zahlen bis 10, ab 7 Jahren auch einfache Plus-Aufgaben). Nenne die Dinge im Satz und zeige sie zusätzlich als Emojis. Gib 3 Zahlen als Auswahl.",
+    farben:"Spiel 'Farben finden': Frage nach der Farbe eines bekannten Gegenstands oder Tiers. Gib 3 Farben als Auswahl mit passendem Emoji.",
+    reime:"Spiel 'Reim-Rakete': Nenne ein einfaches Wort und frage, was sich darauf reimt. Gib 3 Wörter als Auswahl, eins reimt sich.",
+    wissen:"Spiel 'Warum-Fragen': Stelle eine spannende Warum-Frage über Natur, Tiere oder Weltraum, lass das Kind raten und erkläre danach ganz einfach.",
+    geschichte:"Mitmach-Geschichte: Erzähle eine kleine Weltraum-Geschichte mit Luno, immer 2-3 Sätze, dann darf das Kind aus 3 Möglichkeiten wählen, wie es weitergeht."
+  };
+  function rules(){
+    const n = cfg.name || "das Kind"; const a = cfg.age || 5;
+    return `Du bist Luno, ein fröhliches Kind, das mit seiner kleinen Rakete durchs Weltall fliegt. Du sprichst mit ${n} (${a} Jahre alt), deinem besten Freund auf der Erde.
+Regeln:
+- Sprich NUR natürliches, gesprochenes Hochdeutsch, wie ein Kind in einer deutschen Kinderserie: warm, verspielt, neugierig. Kurze, einfache Sätze für ein ${a}-jähriges Kind. Höchstens 3 Sätze.
+- Dein Text wird laut vorgelesen: keine Emojis, keine Sternchen, keine Aufzählungen im "say"-Text. Zahlen bis zwanzig als Wort schreiben.
+- Ab und zu ein Ausruf wie "Sternenstaub!" oder "Raketenstark!", aber nicht in jeder Antwort.
+- Kinder sprechen oft undeutlich oder die Spracherkennung macht Fehler: Errate wohlwollend, was gemeint war.
+- Lobe die Mühe. Bei falscher Antwort: freundlich einen Tipp geben und nochmal raten lassen.
+- Sicherheit: Frage nie nach Adresse, Schule, Fotos, Passwörtern oder Nachnamen. Keine gruseligen, gewalttätigen oder Erwachsenen-Themen. Bei Angst, Schmerzen, Traurigkeit oder ernsten Fragen: lieb reagieren und sagen, dass ${n} das Mama, Papa oder einen Erwachsenen fragen soll.
+- Wenn du etwas nicht weißt, sag es ehrlich.
+- Ende meist mit einer kleinen Frage oder einem Vorschlag, damit das Gespräch weitergeht.
+Antworte NUR mit JSON in genau dieser Form:
+{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false}
+- "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
+- "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.`;
+  }
+  function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
+  async function ask(){
+    if(mode==="claude"){
+      return await sample.json([{role:"user", content:rules()}, ...turns], {modelTier:"quick", cache:false});
+    }
+    if(!cfg.akey){ const e=new Error("nokey"); e.code="nokey"; throw e; }
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
+      body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:500,system:rules(),messages:turns})});
+    if(!r.ok){ const e=new Error("api "+r.status); e.code=r.status===401?"badkey":r.status===429?"rate_limited":"upstream_error"; throw e; }
+    const j=await r.json(); return parseJSON((j.content||[]).map(c=>c.text||"").join(""));
+  }
+  async function send(text, hidden){
+    if(busy || !text) return;
+    busy=true; note(""); stopSpeaking();
+    turns.push({role:"user", content:text}); if(turns.length>16) turns=turns.slice(-16); while(turns.length && turns[0].role!=="user") turns.shift();
+    setBubble(hidden ? "Moment, ich hole das Spiel …" : "Hmm, lass mich überlegen …", true);
+    $("#choices").replaceChildren();
+    let said=null;
+    try{
+      const res = await ask();
+      said = String(res?.say||"Hoppla, das habe ich nicht verstanden. Sagst du es nochmal?");
+      turns.push({role:"assistant", content:JSON.stringify(res)});
+      setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
+      if(res?.star===true) celebrate();
+    }catch(e){
+      turns.pop();
+      const msg = {nokey:"Ich brauche noch meinen Funk zur Erde. Ein Erwachsener kann ihn im Elternbereich einschalten.",
+        badkey:"Der Schlüssel im Elternbereich stimmt nicht.",
+        not_granted:"Luno darf hier noch nicht denken. Bitte einen Erwachsenen, es zu erlauben.",
+        sampling_disabled:"Luno ist für dieses Konto nicht verfügbar.", rate_limited:"Luno braucht eine kleine Pause. Gleich nochmal!",
+        session_expired:"Bitte einen Erwachsenen, sich neu anzumelden."}[e?.code] ?? "Hoppla, mein Funk zur Erde ist gestört. Versuch es nochmal!";
+      setBubble(msg);
+      renderChoices([{text:"Nochmal versuchen",emoji:"🔁"},{text:"Hallo Luno!",emoji:"👋"}]);
+      if(e?.code==="nokey" || e?.code==="badkey"){
+        note("Ohne gültigen Anthropic API-Schlüssel kann Luno nicht antworten. Bitte im Elternbereich eintragen.");
+        if(!keyPromptShown){ keyPromptShown=true; $("#btn-parents").click(); setTimeout(()=>$("#p-akey").focus(),50); }
+      }
+    }finally{ busy=false; }
+    if(said){ await speak(said); if(cfg.auto && mode==="api" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
+  }
+  function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
+
+  /* ---------- settings ---------- */
+  function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
+  function fillForm(){ $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; loadVoices(); showTTS(); }
+  function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim()};
+    store.set("cfg",cfg); renderHeader(); }
+  $("#p-tts").onchange=showTTS;
+  $("#p-test").onclick=()=>{ readForm(); speak("Hallo"+(cfg.name?" "+cfg.name:"")+"! Ich bin Luno. Wollen wir zusammen ein Rätsel spielen?"); };
+  $("#parents-form").addEventListener("submit", readForm);
+  $("#p-reset").onclick=()=>{ turns=[]; stars=0; store.set("stars",0); renderHeader(); $("#dlg-parents").close(); stopSpeaking();
+    setBubble("Hallo! Ich bin Luno, ein Weltraumkind. Drück auf den gelben Knopf und sag mir Hallo!");
+    renderChoices([{text:"Tier-Rätsel",emoji:"🦁"},{text:"Geschichte",emoji:"📖"},{text:"Zählen",emoji:"🔢"}]); };
+
+  /* ---------- wiring ---------- */
+  document.addEventListener("click", e=>{
+    const g=e.target.closest("[data-game]"); if(g){ startGame(g.dataset.game); return; }
+    const s=e.target.closest("[data-say]"); if(s) send(s.dataset.say);
+  });
+  $("#kid").onclick=()=>send(turns.length? "Kitzel! Hihi!" : "Hallo Luno! Wer bist du?");
+  $("#type-form").addEventListener("submit", e=>{ e.preventDefault(); const v=$("#type-in").value.trim(); $("#type-in").value=""; send(v); });
+  $("#btn-games").onclick=()=>$("#dlg-games").showModal();
+  $("#games-close").onclick=()=>$("#dlg-games").close();
+  $("#btn-parents").onclick=()=>{ fillForm(); $("#dlg-parents").showModal(); };
+  $("#kid-pill").onclick=()=>$("#btn-parents").click();
+
+  renderHeader();
+  (async()=>{
+    if(window.claude?.use){ try{ sample = await claude.use("sample"); }catch{ sample=null; } }
+    mode = sample ? "claude" : "api";
+    $("#api-box").hidden = mode==="claude";
+    if(mode==="claude"){ $("#p-auto").closest("label").hidden=true; }
+  })();
+})();
+</script>
+
+</body>
+</html>
