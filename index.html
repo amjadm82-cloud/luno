@@ -307,7 +307,14 @@ dialog p{margin:0 0 12px;color:#5a5296}
       <div class="field"><label for="p-xkey">Pexels-Schlüssel</label>
         <input id="p-xkey" type="password" autocomplete="off" placeholder="leer lassen">
         <div class="hint">Pexels vergibt zurzeit keine neuen Schlüssel.</div></div>
-      <label class="check"><input type="checkbox" id="p-aiimg" checked> Wenn kein passendes Bild gefunden wird: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild)</label>
+      <label class="check"><input type="checkbox" id="p-aiimg"> Wenn kein passendes Bild gefunden wird: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild)</label>
+    </div>
+
+    <div class="fields">
+      <h3>Verbindungen prüfen</h3>
+      <div class="hint">Prüft jeden Dienst einzeln und zeigt, was funktioniert. Bei Problemen ein Foto davon an Claude schicken.</div>
+      <button type="button" class="hbtn ghost" id="p-diag">Alle Verbindungen testen</button>
+      <ul id="p-diagout" class="facts"></ul>
     </div>
 
     <div class="fields">
@@ -339,6 +346,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   if(cfg.tts==="gemini" && !store.get("mig.chirp",false)){ cfg.tts="chirp"; store.set("cfg",cfg); store.set("mig.chirp",true); }
+  if(!store.get("mig.aiimg",false)){ cfg.aiimg=false; store.set("cfg",cfg); store.set("mig.aiimg",true); }
   let stars = store.get("stars", 0);
   let facts = store.get("facts", []);
   let turns = [];
@@ -655,10 +663,10 @@ Antworte NUR mit JSON in genau dieser Form:
         body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:5,messages:[{role:"user",content:[
           {type:"image",source:{type:"url",url}},
           {type:"text",text:'Ein '+(cfg.age||5)+'-jähriges Kind möchte "'+what+'" sehen. Zeigt dieses Bild deutlich und gut erkennbar genau das (das Ding selbst, nicht nur etwas Ähnliches oder Folgen davon)? Und ist es für kleine Kinder völlig unbedenklich: keine nackte Haut, keine Unterwäsche oder Badekleidung, keine Körperteile in Nahaufnahme, keine Verletzungen, kein Blut, keine Gewalt, nichts Gruseliges, kein Text im Mittelpunkt? Antworte nur mit JA oder NEIN.'}]}]})});
-      if(!r.ok) return false;
+      if(!r.ok) return null; // Claude could not load the picture: unknown
       const t=((await r.json()).content||[]).map(c=>c.text||"").join("").trim().toUpperCase();
       return t.startsWith("JA");
-    }catch{ return false; }
+    }catch{ return null; }
   }
   async function showImage(img){
     const what=String(img.what||img.wiki||"").slice(0,60);
@@ -675,16 +683,20 @@ Antworte NUR mit JSON in genau dieser Form:
     // interleave sources so the best candidate of each source is checked first
     const cands=[]; for(let i=0;i<3;i++) for(const l of lists) if(l[i] && !cands.some(c=>c.src===l[i].src)) cands.push(l[i]);
     let found=null;
-    for(const c of cands.slice(0,6)){
-      const ok=await imageIsOk(c.src, what);
-      if(ok===true || (ok===null && c.src2!=="Wikipedia")){ found=c; break; }
-    }
-    if(!found && cfg.gkey && cfg.aiimg!==false) found=await geminiImage(what).catch(()=>null);
+    const top=cands.slice(0,5);
+    const timeout=new Promise(r=>setTimeout(()=>r("timeout"),9000));
+    const checks=top.map(c=>imageIsOk(c.src, what));
+    // take the first candidate (in priority order) that passes; moderated sources pass if the check itself failed
+    const decide=async()=>{ for(let i=0;i<top.length;i++){ const ok=await checks[i]; const c=top[i];
+      if(ok===true || (ok===null && c.src2!=="Wikipedia")) return c; } return null; };
+    found=await Promise.race([decide(), timeout]); if(found==="timeout") found=null;
+    if(!found && cfg.gkey && cfg.aiimg===true){ wait.textContent="🎨 Ich male es dir schnell"; found=await geminiImage(what).catch(()=>null); }
     if(imgNote) note(imgNote);
     if(!found){ wait.textContent="Hmm, ich habe kein passendes Bild gefunden. Frag mich nach etwas anderem!"; return; }
     const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
     im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.link?"Quelle ↗":""; if(found.link) $("#sketch-credit").href=found.link; };
     im.onerror=()=>{ wait.textContent="Das Bild wollte nicht laden. Frag mich nochmal!"; };
+    setTimeout(()=>{ if(!im.complete){ wait.textContent="Das Bild lädt zu langsam. Frag mich nochmal!"; } }, 10000);
     im.src=found.src;
   }
   $("#sketch-close").onclick=()=>{ $("#sketch").hidden=true; $("#stage").classList.remove("drawing"); };
@@ -743,19 +755,36 @@ Antworte NUR mit JSON in genau dieser Form:
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-ckey").value=cfg.ckey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-aiimg").checked=cfg.aiimg!==false; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-ckey").value=cfg.ckey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-aiimg").checked=cfg.aiimg===true; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
     tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), ckey:$("#p-ckey").value.trim(), pkey:$("#p-pkey").value.trim(), aiimg:$("#p-aiimg").checked, ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
+  $("#p-diag").onclick=async()=>{ readForm(); const out=$("#p-diagout"); out.replaceChildren();
+    const row=(name)=>{ const li=document.createElement("li"); li.textContent=name+": prüfe …"; out.append(li); return (ok,msg)=>{ li.textContent=(ok?"✅ ":"❌ ")+name+": "+msg; }; };
+    const t0=()=>performance.now(), ms=s=>Math.round(performance.now()-s)+" ms";
+    const tasks=[];
+    { const done=row("Claude (Antworten)"); tasks.push((async()=>{ if(!cfg.akey) return done(false,"kein Schlüssel eingetragen"); const s=t0();
+      try{ const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:5,messages:[{role:"user",content:"Sag Hallo"}]})});
+        done(r.ok, r.ok?"funktioniert ("+ms(s)+")":"Fehler "+r.status+(r.status===401?" – Schlüssel falsch":r.status===400?" – evtl. kein Guthaben":"")); }catch(e){ done(false,"keine Verbindung"); } })()); }
+    { const done=row("Stimme Chirp 3 HD (Leda)"); tasks.push((async()=>{ if(!(cfg.ckey||cfg.gkey)) return done(false,"kein Stimm-Schlüssel eingetragen"); const s=t0();
+      try{ await chirpTTS("Hallo"); done(true,"funktioniert ("+ms(s)+")"); }catch(e){ const m=String(e.message); done(false, m+(/403/.test(m)?" – API nicht aktiviert, Projekt ohne Abrechnung oder Schlüssel-Einschränkung":/400/.test(m)?" – Schlüssel ungültig":"")); } })()); }
+    { const done=row("Stimme Gemini (Ersatz)"); tasks.push((async()=>{ if(!cfg.gkey) return done(false,"kein Schlüssel eingetragen"); const s=t0();
+      try{ await geminiTTS("Hallo"); done(true,"funktioniert ("+ms(s)+")"); }catch(e){ const m=String(e.message); done(false, m+(/429/.test(m)?" – Gratis-Limit erreicht":"")); } })()); }
+    { const done=row("Bilder Pixabay"); tasks.push((async()=>{ if(!cfg.pkey) return done(false,"kein Schlüssel eingetragen"); const s=t0();
+      try{ const l=await pixabayImages("tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort – Schlüssel prüfen"); }catch{ done(false,"keine Verbindung"); } })()); }
+    { const done=row("Bilder Unsplash"); tasks.push((async()=>{ if(!cfg.ukey) return done(false,"kein Schlüssel eingetragen (optional)"); const s=t0();
+      try{ const l=await unsplashImages("tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort – Access Key prüfen"); }catch{ done(false,"keine Verbindung"); } })()); }
+    { const done=row("Bilder Wikipedia"); tasks.push((async()=>{ const s=t0(); try{ const l=await wikiExact("de","Tiger"); done(l.length>0, l.length?"funktioniert ("+ms(s)+")":"keine Antwort"); }catch{ done(false,"keine Verbindung"); } })()); }
+    await Promise.all(tasks); };
   $("#p-link").onclick=async()=>{ readForm();
     const d={aiimg:cfg.aiimg,ckey:cfg.ckey,akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
     catch{ $("#p-link").textContent="Link markiert – mit Cmd+C kopieren"; } };
-  $("#p-test").onclick=()=>{ readForm(); speak("Hallo"+(cfg.name?" "+cfg.name:"")+"! Ich bin Luno. Wollen wir zusammen ein Rätsel spielen?"); };
+  $("#p-test").onclick=()=>{ readForm(); note(""); const used=$("#p-tts").selectedOptions[0]?.textContent||""; setTimeout(()=>{ const n=$("#note").textContent; if(n) $("#p-diag").click(); }, 4000); speak("Hallo"+(cfg.name?" "+cfg.name:"")+"! Ich bin Luno. Wollen wir zusammen ein Rätsel spielen?"); };
   $("#parents-form").addEventListener("submit", readForm);
   $("#p-reset").onclick=()=>{ turns=[]; stars=0; store.set("stars",0); renderHeader(); $("#dlg-parents").close(); stopSpeaking();
     setBubble("Hallo! Ich bin Luno, ein kleiner Fußballstar. Drück auf den gelben Knopf und sag mir Hallo!");
