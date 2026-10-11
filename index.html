@@ -269,7 +269,9 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div id="tts-browser"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
       <div class="hint">Tipp für Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
     <div id="tts-gemini" hidden><label for="p-gkey">Google Gemini API-Schlüssel</label><input id="p-gkey" type="password" placeholder="AIza…" autocomplete="off">
-      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey. Für Chirp muss im selben Google-Projekt die „Cloud Text-to-Speech API“ aktiviert sein.</div></div>
+      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey. </div>
+      <label for="p-ckey">Google Stimm-Schlüssel (für Chirp 3 HD)</label><input id="p-ckey" type="password" placeholder="AIza…" autocomplete="off">
+      <div class="hint">Normaler API-Schlüssel aus der Google Cloud Console, beschränkt auf „Cloud Text-to-Speech API“.</div></div>
     <div id="tts-openai" hidden><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-…" autocomplete="off">
       <label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div>
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
@@ -310,7 +312,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))));
   let setupDone = false;
   try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
-    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["aiimg","pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
+    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["ckey","aiimg","pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   if(cfg.tts==="gemini" && !store.get("mig.chirp",false)){ cfg.tts="chirp"; store.set("cfg",cfg); store.set("mig.chirp",true); }
@@ -722,14 +724,14 @@ Antworte NUR mit JSON in genau dieser Form:
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-aiimg").checked=cfg.aiimg!==false; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-ckey").value=cfg.ckey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-aiimg").checked=cfg.aiimg!==false; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), aiimg:$("#p-aiimg").checked, ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), ckey:$("#p-ckey").value.trim(), pkey:$("#p-pkey").value.trim(), aiimg:$("#p-aiimg").checked, ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-link").onclick=async()=>{ readForm();
-    const d={aiimg:cfg.aiimg,akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const d={aiimg:cfg.aiimg,ckey:cfg.ckey,akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
