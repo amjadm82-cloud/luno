@@ -93,7 +93,8 @@ function gemini_tts($text, $key, $model, $voice, $style) {
 
 if ($action === 'chat') {
   $model = in_array($in['model'] ?? '', ['claude-haiku-5-5', 'claude-sonnet-5-5'], true) ? $in['model'] : 'claude-haiku-5-5';
-  $system = mb_substr((string)($in['system'] ?? ''), 0, 6000);
+  $system = mb_substr((string)($in['system'] ?? ''), 0, 8000);
+  $maxTok = max(100, min(3000, (int)($in['max_tokens'] ?? 600)));
   $msgs = [];
   foreach (array_slice((array)($in['messages'] ?? []), -16) as $m) {
     if (!in_array($m['role'] ?? '', ['user', 'assistant'], true)) continue;
@@ -102,7 +103,7 @@ if ($action === 'chat') {
   if (!$msgs) fail(400, 'messages');
   [$st, $res] = post('https://api.anthropic.com/v1/messages',
     ['x-api-key: ' . $ANTHROPIC_KEY, 'anthropic-version: 2023-06-01', 'content-type: application/json'],
-    json_encode(['model' => $model, 'max_tokens' => 500, 'system' => $system, 'messages' => $msgs]));
+    json_encode(['model' => $model, 'max_tokens' => $maxTok, 'system' => $system, 'messages' => $msgs]));
   http_response_code($st); header('Content-Type: application/json'); echo $res; exit;
 }
 

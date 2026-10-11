@@ -54,6 +54,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 details summary{cursor:pointer;font:800 1.05rem var(--body);color:#4b3fa8;margin:16px 0 6px}
 details[open]{display:grid;gap:8px}
 .facts{margin:0;padding-left:20px;color:#2a2160}.facts li{margin:2px 0}.facts:empty::before{content:"Noch nichts. Luno lernt beim Spielen dazu.";color:#6b64a3;font-size:.9rem;margin-left:-20px}
+.sketch{position:relative;order:3;flex:0 1 380px;min-width:0;background:#fffdf6;border-radius:24px;padding:12px;box-shadow:0 10px 0 #0003;z-index:3;color:#2a2160;
+  background-image:linear-gradient(#e9e1ff 1px,transparent 1px),linear-gradient(90deg,#e9e1ff 1px,transparent 1px);background-size:24px 24px}
+.sketch-head{display:flex;align-items:center;gap:8px;font:800 1.05rem var(--display)}.sketch-head b{flex:1;min-width:0}
+.sketch-head button{background:#2a2160;color:#fff;border-radius:50%;width:36px;height:36px;font-weight:800}
+.sketch-area{aspect-ratio:1;display:grid;place-items:center;max-width:100%}.sketch-area svg{width:100%;height:100%}
+.sketch-wait{font:400 1.3rem var(--display);color:#6b64a3;animation:float 1.5s ease-in-out infinite}
+.stage.drawing .bubble{max-width:300px}.stage.drawing .kid{height:clamp(200px,44vh,380px)}
+@media (max-width:700px){.sketch{order:0;flex:none;width:100%;max-width:420px}.stage.drawing .kid,.stage.drawing .bubble{display:none}}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -179,6 +187,10 @@ dialog p{margin:0 0 12px;color:#5a5296}
       <g class="m-open"><path d="M104 141 Q 120 141 136 141 Q 134 164 120 164 Q 106 164 104 141 Z" fill="#8a3a3a"/><path d="M110 155 Q 120 150 130 155 Q 127 162 120 162 Q 113 162 110 155 Z" fill="#ff8f86"/><rect x="108" y="141" width="24" height="5" rx="2" fill="#fff"/></g>
     </svg>
     <div class="starburst" id="burst"></div>
+    <div class="sketch" id="sketch" hidden>
+      <div class="sketch-head"><b id="sketch-title">Luno malt</b><button type="button" id="sketch-close" aria-label="Bild schließen">✕</button></div>
+      <div class="sketch-area" id="sketch-area"></div>
+    </div>
   </main>
 
   <section class="controls">
@@ -478,29 +490,70 @@ Kennenlernen:
 - Nutze, was du schon weißt, für persönliche Rätsel, Geschichten und Spiele (z. B. eine Geschichte mit dem Lieblingstier). Frag nichts, was du schon weißt.
 ${cfg.name ? "" : "- Du kennst den Namen noch nicht: frag zuerst freundlich, wie das Kind heißt und wie alt es ist."}
 Antworte NUR mit JSON in genau dieser Form:
-{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false,"remember":[]}
+{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false,"remember":[],"draw":""}
 - "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
-- "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.`;
+- "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
+- "draw": Wenn das Kind möchte, dass du etwas malst oder zeichnest (oder es zum Gespräch super passt), schreib hier kurz, was du malst (z. B. "eine lustige Mücke"), und sag im "say" fröhlich, dass du es jetzt malst. Nur kindgerechte Motive. Sonst weglassen.`;
   }
   function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
-  async function ask(){
+  async function callClaude(system, messages, maxTokens, model){
     if(mode==="claude"){
-      return await sample.json([{role:"user", content:rules()}, ...turns], {modelTier:"quick", cache:false});
+      const {text}=await sample([{role:"user", content:system}, ...messages], {modelTier: maxTokens>800?"default":"quick", cache:false}); return text;
     }
-    let r;
+    let r; model=model||cfg.model||"claude-haiku-5-5";
     if(mode==="proxy"){
       r=await fetch(PROXY_URL+"?action=chat",{method:"POST",headers:{"Content-Type":"application/json","X-Luno-Code":accessCode},
-        body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",system:rules(),messages:turns})});
+        body:JSON.stringify({model,system,messages,max_tokens:maxTokens})});
       if(!r.ok){ const e=new Error("proxy "+r.status); e.code=r.status===401?"badcode":r.status===429?"rate_limited":"upstream_error"; throw e; }
     } else {
       if(!cfg.akey){ const e=new Error("nokey"); e.code="nokey"; throw e; }
       r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
-        body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:500,system:rules(),messages:turns})});
+        body:JSON.stringify({model,max_tokens:maxTokens,system,messages})});
       if(!r.ok){ const e=new Error("api "+r.status); e.code=r.status===401?"badkey":r.status===429?"rate_limited":"upstream_error"; throw e; }
     }
-    const j=await r.json(); return parseJSON((j.content||[]).map(c=>c.text||"").join(""));
+    const j=await r.json(); return (j.content||[]).map(c=>c.text||"").join("");
   }
+  async function ask(){ return parseJSON(await callClaude(rules(), turns, 600)); }
+
+  /* ---------- drawing ---------- */
+  const SVG_TAGS=new Set(["svg","g","path","circle","ellipse","rect","line","polyline","polygon","defs","lineargradient","radialgradient","stop"]);
+  const SVG_ATTRS=new Set(["d","cx","cy","r","rx","ry","x","y","x1","y1","x2","y2","width","height","points","fill","stroke","stroke-width","stroke-linecap","stroke-linejoin","transform","opacity","fill-opacity","stroke-opacity","viewbox","id","offset","stop-color","stop-opacity","gradientunits","fx","fy"]);
+  function cleanSVG(src){
+    const m=String(src).match(/<svg[\s\S]*<\/svg>/i); if(!m) return null;
+    const doc=new DOMParser().parseFromString(m[0],"image/svg+xml"); const root=doc.documentElement;
+    if(!root || root.nodeName.toLowerCase()!=="svg") return null;
+    const out=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    (function copy(from,to){ for(const n of Array.from(from.childNodes)){ if(n.nodeType!==1) continue; const t=n.nodeName.toLowerCase(); if(!SVG_TAGS.has(t)) continue;
+      const el=document.createElementNS("http://www.w3.org/2000/svg", n.nodeName);
+      for(const a of Array.from(n.attributes)){ const k=a.name.toLowerCase(), v=a.value; if(!SVG_ATTRS.has(k)) continue; if(/url\((?!\s*#)|javascript:|expression/i.test(v)) continue; el.setAttribute(a.name,v); }
+      to.append(el); copy(n,el); } })(root,out);
+    out.setAttribute("viewBox", root.getAttribute("viewBox")||"0 0 300 300"); return out;
+  }
+  function animateDrawing(svg){
+    const shapes=[...svg.querySelectorAll("path,circle,ellipse,rect,line,polyline,polygon")]; const step=Math.min(350, 6000/Math.max(1,shapes.length));
+    shapes.forEach((el,i)=>{ let len=0; try{ len=el.getTotalLength(); }catch{} if(!len) return;
+      const fill=el.getAttribute("fill"); el.style.fillOpacity="0"; el.style.strokeDasharray=len; el.style.strokeDashoffset=len;
+      if(!el.getAttribute("stroke")||el.getAttribute("stroke")==="none"){ el.style.stroke="#2a2160"; el.style.strokeWidth="2"; el.dataset.tmp="1"; }
+      el.style.transition=`stroke-dashoffset ${step*1.6}ms ease ${i*step}ms, fill-opacity 400ms ease ${i*step+step*1.2}ms`;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.strokeDashoffset="0"; el.style.fillOpacity=""; }));
+      if(el.dataset.tmp) setTimeout(()=>{ el.style.stroke=""; el.style.strokeWidth=""; }, i*step+step*2);
+    });
+  }
+  async function drawSketch(what){
+    const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing"); $("#sketch-title").textContent="Luno malt: "+what;
+    area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="✏️ Ich male …"; area.append(wait);
+    const sys=`Du bist ein Illustrator für kleine Kinder. Zeichne eine einfache, fröhliche Cartoon-Skizze als SVG.
+Regeln: viewBox="0 0 300 300". Dicke, runde Konturen (stroke="#2a2160", stroke-width 4 bis 6, stroke-linecap="round", stroke-linejoin="round"). Wenige kräftige, freundliche Farben. Höchstens 40 Formen. Das Motiv groß und mittig, gut erkennbar, mit freundlichem Gesicht, wenn es ein Lebewesen ist. Kein Text, keine Bilder, keine Skripte, keine Filter. Keine echten Personen und keine bekannten Figuren oder Marken: zeichne stattdessen eine eigene, allgemeine Version.
+Antworte NUR mit dem <svg>…</svg>-Code.`;
+    try{
+      const txt=await callClaude(sys,[{role:"user",content:"Zeichne: "+what}],3000,"claude-sonnet-5-5");
+      const svg=cleanSVG(txt); if(!svg) throw new Error("svg");
+      area.replaceChildren(svg); animateDrawing(svg);
+    }catch(e){ area.replaceChildren(); const w=document.createElement("div"); w.className="sketch-wait"; w.textContent="Oh, mein Stift ist abgebrochen. Frag mich nochmal!"; area.append(w); }
+  }
+  $("#sketch-close").onclick=()=>{ $("#sketch").hidden=true; $("#stage").classList.remove("drawing"); };
+
   async function send(text, hidden){
     if(busy || !text) return;
     busy=true; note(""); stopSpeaking();
@@ -514,6 +567,7 @@ Antworte NUR mit JSON in genau dieser Form:
       turns.push({role:"assistant", content:JSON.stringify(res)});
       setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
       if(res?.star===true) celebrate();
+      if(res?.draw && String(res.draw).trim()) drawSketch(String(res.draw).trim().slice(0,80));
       if(Array.isArray(res?.remember)){ for(const f of res.remember){ const t=String(f).trim().slice(0,80); if(t && !facts.includes(t)) facts.push(t); }
         if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
       if(!cfg.name && res?.kid_name){ cfg.name=String(res.kid_name).trim().slice(0,20); store.set("cfg",cfg); renderHeader(); }
