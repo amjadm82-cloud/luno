@@ -270,7 +270,8 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
       <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
       <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
-    <h3>Bilder (optional, alle gratis)</h3>
+    <h3>Bilder</h3>
+    <label class="check"><input type="checkbox" id="p-aiimg" checked> Wenn keine freie Quelle passt: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild, braucht Abrechnung in AI Studio)</label>
     <div class="hint">Ohne Schlüssel kommen die Bilder von Wikipedia und Openverse. Mit einem Schlüssel nimmt Luno zuerst diese Quelle.</div>
     <label for="p-pkey">Pixabay-Schlüssel</label>
     <input id="p-pkey" type="password" autocomplete="off" placeholder="pixabay.com/api/docs">
@@ -304,7 +305,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))));
   let setupDone = false;
   try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
-    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
+    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["aiimg","pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
@@ -545,9 +546,22 @@ Antworte NUR mit JSON in genau dieser Form:
   }
   async function openverseImage(q){
     const r=await fetch("https://api.openverse.org/v1/images/?page_size=5&mature=false&aspect_ratio=wide&q="+encodeURIComponent(q));
-    if(!r.ok) return null; const h=((await r.json()).results||[]).find(x=>x.url);
-    return h ? {src:h.thumbnail||h.url, credit:"Bild: "+(h.creator||"Openverse")+" ("+String(h.license||"cc").toUpperCase()+")", link:h.foreign_landing_url} : null;
+    if(!r.ok) return null; const res=((await r.json()).results||[]).filter(x=>x.url); const h=res.find(x=>(x.width||0)>=800)||res[0];
+    return h ? {src:h.url, credit:"Bild: "+(h.creator||"Openverse")+" ("+String(h.license||"cc").toUpperCase()+")", link:h.foreign_landing_url} : null;
   }
+  async function geminiImage(what){
+    const prompt="Ein klares, schönes, kindgerechtes Bild von: "+what+". Das ganze Motiv vollständig im Bild sichtbar (nicht abgeschnitten), groß und mittig, heller ruhiger Hintergrund, realistisch und detailreich, freundlich und nicht gruselig. Kein Text, keine Schrift, keine Logos, keine echten Personen.";
+    const H={"x-goog-api-key":cfg.gkey,"Content-Type":"application/json"};
+    let r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:H,body:JSON.stringify({model:"gemini-nano-banana-2.1",
+      input:[{type:"text",text:prompt}],response_format:{type:"image",mime_type:"image/jpeg",aspect_ratio:"4:3"}})});
+    if(!r.ok){ r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",{method:"POST",headers:H,body:JSON.stringify({
+      contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:["IMAGE"]}})}); }
+    if(!r.ok){ if(r.status===429||r.status===403) imgNote="KI-Bilder brauchen in Google AI Studio eine eingerichtete Abrechnung."; return null; }
+    const b=findAudio(await r.json()); if(!b) return null;
+    const mime=b.startsWith("iVBOR")?"image/png":"image/jpeg";
+    return {src:"data:"+mime+";base64,"+b, credit:"Bild: von Luno mit KI erstellt"};
+  }
+  let imgNote="";
   async function wikiExact(lang,title){
     const u="https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url&titles="+encodeURIComponent(title);
     const r=await fetch(u); if(!r.ok) return null; const p=Object.values((await r.json())?.query?.pages||{})[0];
@@ -566,16 +580,19 @@ Antworte NUR mit JSON in genau dieser Form:
     area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild …"; area.append(wait);
     let found=null;
     const q=img.en||what;
+    imgNote="";
     const sources=[
       ()=>cfg.pkey && pixabayImage(q),
       ()=>cfg.ukey && unsplashImage(q),
       ()=>cfg.xkey && pexelsImage(q),
+      ()=>openverseImage(q),
       ()=>img.wiki && wikiExact("de",img.wiki),
       ()=>img.wiki_en && wikiExact("en",img.wiki_en),
       ()=>img.wiki && wikiImage(img.wiki),
       ()=>wikiImage(what),
-      ()=>openverseImage(q)];
+      ()=>cfg.gkey && cfg.aiimg!==false && geminiImage(what)];
     for(const src of sources){ if(found) break; try{ found=await src()||null; }catch{} }
+    if(imgNote) note(imgNote);
     if(!found){ wait.textContent="Hmm, ich habe kein gutes Bild gefunden. Frag mich nach etwas anderem!"; return; }
     const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
     im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.credit; if(found.link) $("#sketch-credit").href=found.link; };
@@ -626,14 +643,14 @@ Antworte NUR mit JSON in genau dieser Form:
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-aiimg").checked=cfg.aiimg!==false; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), aiimg:$("#p-aiimg").checked, ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-link").onclick=async()=>{ readForm();
-    const d={akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const d={aiimg:cfg.aiimg,akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
