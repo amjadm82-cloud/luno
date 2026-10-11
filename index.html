@@ -239,6 +239,10 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
     <input id="p-young" type="range" min="0" max="15" step="1" value="0">
     <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div>
+    <h3>Familien-Link</h3>
+    <div class="hint">Erstellt einen Link mit diesen Einstellungen. Auf einem anderen Gerät öffnen, und Luno ist sofort startklar. Den Link nur in der Familie teilen, er enthält die Schlüssel.</div>
+    <button type="button" class="hbtn ghost" id="p-link">Familien-Link erstellen und kopieren</button>
+    <input id="p-linkout" readonly hidden aria-label="Familien-Link">
     <div class="dlgbtns"><button type="button" class="hbtn ghost" id="p-test">Stimme testen</button><button type="button" class="hbtn ghost" id="p-reset">Neu starten</button><button class="hbtn" id="p-save">Speichern</button></div>
   </form>
 </dialog>
@@ -250,8 +254,16 @@ dialog p{margin:0 0 12px;color:#5a5296}
     get(k, d){ try{ const v = localStorage.getItem("luno."+k); return v==null?d:JSON.parse(v);}catch{ return d; } },
     set(k, v){ try{ localStorage.setItem("luno."+k, JSON.stringify(v)); }catch{} }
   };
-  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"browser", voice:"", gkey:"", young:0, okey:"", ovoice:"coral", ekey:"", evoice:""};
+  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"gemini", voice:"", gkey:"", young:7, okey:"", ovoice:"coral", ekey:"", evoice:""};
   let cfg = Object.assign({}, DEF, store.get("cfg", {}));
+  // Familien-Link: #setup=... richtet das Gerät einmal ein (Schlüssel landen nur im Browser, nie im Code)
+  const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))));
+  let setupDone = false;
+  try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
+    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["akey","gkey","okey","name","age","young","tts","model","auto"];
+      for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
+      store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
   let turns = [];
   let busy = false, mode = null, keyPromptShown = false;
@@ -502,6 +514,12 @@ Antworte NUR mit JSON in genau dieser Form:
     tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
+  $("#p-link").onclick=async()=>{ readForm();
+    const d={akey:cfg.akey,gkey:cfg.gkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
+    const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
+    try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
+    catch{ $("#p-link").textContent="Link markiert – mit Cmd+C kopieren"; } };
   $("#p-test").onclick=()=>{ readForm(); speak("Hallo"+(cfg.name?" "+cfg.name:"")+"! Ich bin Luno. Wollen wir zusammen ein Rätsel spielen?"); };
   $("#parents-form").addEventListener("submit", readForm);
   $("#p-reset").onclick=()=>{ turns=[]; stars=0; store.set("stars",0); renderHeader(); $("#dlg-parents").close(); stopSpeaking();
@@ -521,6 +539,7 @@ Antworte NUR mit JSON in genau dieser Form:
   $("#kid-pill").onclick=()=>$("#btn-parents").click();
 
   renderHeader();
+  if(setupDone) setBubble((cfg.name?"Hallo "+cfg.name+"! ":"Hallo! ")+"Ich bin Luno, ein Weltraumkind. Drück auf den gelben Knopf und sag mir Hallo!");
   (async()=>{
     if(window.claude?.use){ try{ sample = await claude.use("sample"); }catch{ sample=null; } }
     mode = sample ? "claude" : (PROXY_URL && accessCode ? "proxy" : "api");
