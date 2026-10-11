@@ -638,7 +638,7 @@ Antworte NUR mit JSON in genau dieser Form:
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
 - "spell": Ein einzelnes deutsches Wort (nur Buchstaben, z. B. "Mücke"), das das Kind im Spiel Buchstaben-Flug buchstabieren soll. Setze es, wenn das Kind das Spiel spielen will oder nach einem neuen Wort/Bild zustimmt, es zu buchstabieren. Nach einem gezeigten Bild oder neuen Wort darfst du ab und zu als Auswahl "Buchstaben-Flug!" anbieten. Sonst weglassen.
-- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib IMMER ein Objekt zurück, auch für Würmer, Insekten, Spinnen, Fahrzeuge, Automodelle, Maschinen, Gebäude usw.: {"what":"kurz auf Deutsch, z. B. Regenwurm","wiki":"genauer deutscher Wikipedia-Artikeltitel, z. B. Regenwürmer","en":"präziser englischer Suchbegriff für genau das Ding, mit Marke und Modell falls vorhanden, z. B. earthworm oder Tesla Cybertruck (nie Körperteile, Stiche, Verletzungen)","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Earthworm oder Tesla Cybertruck"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Die Spracherkennung schreibt Namen oft falsch (z. B. "Saiber Track" = Cybertruck): deute sie sinnvoll.
+- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib IMMER ein Objekt zurück, auch für Würmer, Insekten, Spinnen, Fahrzeuge, Automodelle, Maschinen, Gebäude usw.: {"what":"kurz auf Deutsch, z. B. Regenwurm","wiki":"genauer deutscher Wikipedia-Artikeltitel, z. B. Regenwürmer","en":"präziser englischer Suchbegriff für genau das Ding, mit Marke und Modell falls vorhanden, z. B. earthworm oder Tesla Cybertruck (nie Körperteile, Stiche, Verletzungen)","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Earthworm oder Tesla Cybertruck","en_alt":"allgemeinerer englischer Ersatz-Suchbegriff, z. B. bee für queen bee"}. Kinder erfinden oft Wörter: übersetze sie in den richtigen Begriff (z. B. "Königsbiene" = Bienenkönigin, queen bee). Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Die Spracherkennung schreibt Namen oft falsch (z. B. "Saiber Track" = Cybertruck): deute sie sinnvoll.
 - WICHTIG beim Bild: Du siehst das Bild noch NICHT. Sag im "say" nur kurz, dass du ein Bild suchst (z. B. "Ich suche dir ein Bild von einem Regenwurm!"). Beschreibe NIE Farbe, Aussehen oder Details des Bildes, und sag nicht "du siehst". Luno beschreibt das Bild selbst, sobald es da ist. Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
   function parseJSON(t){ t=String(t||"");
@@ -754,14 +754,14 @@ Antworte NUR mit JSON in genau dieser Form:
         body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:150,messages:[{role:"user",content:[
           {type:"image",source:src},
           {type:"text",text:'Ein '+(cfg.age||5)+'-jähriges Kind möchte ein Foto von "'+what+'" sehen. Prüfe dieses Bild genau.\n'+
-            '1) "zeigt": "genau" nur wenn das Bild deutlich und gut erkennbar genau DAS zeigt (bei Marken/Modellen genau dieses Modell, nicht ein anderes Auto oder Ding derselben Marke), "aehnlich" wenn nur etwas Ähnliches, "nein" sonst.\n'+
+            '1) "zeigt": "genau" wenn das Bild deutlich DAS zeigt (bei Marken/Modellen genau dieses Modell, nicht ein anderes Modell derselben Marke). Bei Dingen, die man auf Fotos kaum unterscheiden kann (z. B. Bienenkönigin, Hunderasse, Baby-Tier), reicht ein typisches, glaubwürdiges Bild davon für "genau". "aehnlich" wenn nur etwas Verwandtes/Ähnliches (z. B. eine normale Biene statt Bienenkönigin), "nein" sonst.\n'+
             '2) "sicher": true nur wenn für kleine Kinder unbedenklich: keine nackte Haut, keine Unterwäsche/Badekleidung, keine Körperteile in Nahaufnahme, keine Verletzungen, kein Blut, keine Gewalt, nichts Gruseliges, kein Text im Mittelpunkt. Normale Tiere wie Würmer, Insekten, Spinnen oder Schlangen in der Natur sind in Ordnung.\n'+
             '3) "satz": ein kurzer, fröhlicher Satz für das Kind, was WIRKLICH auf dem Bild zu sehen ist, mit den echten Farben (z. B. "Hier siehst du einen roten Cybertruck auf einer Straße."). Keine Quellen, kein Text vom Bild.\n'+
             'Antworte nur mit JSON: {"zeigt":"genau|aehnlich|nein","sicher":true,"satz":"..."}'}]}]})});
       if(!r.ok){ lastCheckErr="Claude-Prüfung Fehler "+r.status; return {ok:null}; }
       const t=((await r.json()).content||[]).map(c=>c.text||"").join("");
       const j=JSON.parse((t.match(/\{[\s\S]*\}/)||["{}"])[0]);
-      return {ok: j.zeigt==="genau" && j.sicher===true, desc: cleanSay(String(j.satz||"")).slice(0,160)};
+      return {ok: j.zeigt==="genau" && j.sicher===true, near: j.zeigt==="aehnlich" && j.sicher===true, desc: cleanSay(String(j.satz||"")).slice(0,160)};
     }catch{ return {ok:null}; }
   }
   async function imageIsOk(url, what){ return (await imageCheck(url, what)).ok; }
@@ -778,19 +778,24 @@ Antworte NUR mit JSON in genau dieser Form:
       cfg.ukey ? unsplashImages(q).catch(()=>[]) : [],
       commonsImages(img.wiki_en||q).catch(()=>[]),
       wikiSearch("en",q).catch(()=>[]),
-      cfg.xkey ? pexelsImages(q).catch(()=>[]) : []]);
+      cfg.xkey ? pexelsImages(q).catch(()=>[]) : [],
+      (img.wiki_en && img.en && img.en!==img.wiki_en) ? commonsImages(img.en).catch(()=>[]) : [],
+      (img.en_alt && cfg.pkey) ? pixabayImages(img.en_alt).catch(()=>[]) : [],
+      img.en_alt ? commonsImages(img.en_alt).catch(()=>[]) : []]);
     // Quellen abwechselnd mischen: das beste Bild jeder Quelle wird zuerst geprüft
     const cands=[]; for(let i=0;i<3;i++) for(const l of lists) if(l[i] && !cands.some(c=>c.src===l[i].src)) cands.push(l[i]);
-    const top=cands.slice(0,8), res=new Array(top.length);
+    const top=cands.slice(0,10), res=new Array(top.length);
     if(top.length) wait.textContent="🔭 Ich schaue mir "+top.length+" Bilder genau an";
     // alle gleichzeitig prüfen; nimm das erste (nach Rangfolge), das GENAU passt
     let found=await new Promise(done=>{ let left=top.length; if(!left) return done(null);
       const pick=final=>{ for(let i=0;i<top.length;i++){ const r=res[i];
           if(r===undefined){ if(!final) return; continue; }
           if(r.ok===true || (r.ok===null && (top[i].src2==="Pixabay"||top[i].src2==="Unsplash"||top[i].src2==="Pexels"))) return done({...top[i], desc:r.desc}); }
-        if(final) done(null); };
+        if(final){ // kein genaues Bild: dann ein ähnliches, aber ehrlich sagen
+          for(let i=0;i<top.length;i++){ const r=res[i]; if(r?.near) return done({...top[i], desc:"Ein ganz genaues Bild von "+what+" habe ich nicht gefunden, aber das hier ist ähnlich. "+(r.desc||"")}); }
+          done(null); } };
       top.forEach((c,i)=>imageCheck(c.src, what).then(r=>{ res[i]=r; left--; pick(left===0); }));
-      setTimeout(()=>pick(true),14000); });
+      setTimeout(()=>pick(true),13000); });
     if(!found && cfg.gkey && cfg.aiimg===true){ wait.textContent="🎨 Ich male es dir schnell"; found=await geminiImage(what).catch(()=>null); }
     if(imgNote) note(imgNote);
     if(!found){ wait.textContent="Hmm, ich habe kein Bild gefunden, das wirklich "+what+" zeigt."; stopSpeaking(); sayChunk("Hmm, ich habe leider kein Bild gefunden, das wirklich "+what+" zeigt. Soll ich etwas anderes zeigen?"); noteShown("kein passendes Bild gefunden"); return; }
@@ -949,16 +954,27 @@ Antworte NUR mit JSON in genau dieser Form:
     }
   }
   /* Buchstaben deutlich sprechen: Lautschrift für die Stimme + Merkwort, jeder Buchstabe als eigene langsame Aufnahme */
-  const DE_LETTER={A:"Ah",B:"Beh",C:"Zeh",D:"Deh",E:"Eh",F:"Eff",G:"Geh",H:"Hah",I:"Ih",J:"Jott",K:"Kah",L:"Ell",M:"Emm",N:"Enn",O:"Oh",P:"Peh",Q:"Kuh",R:"Err",S:"Ess",T:"Teh",U:"Uh",V:"Fau",W:"Weh",X:"Iks",Y:"Ypsilon",Z:"Zett",Ä:"Äh",Ö:"Öh",Ü:"Üh"};
+  const DE_LETTER={A:"A",B:"Beh",C:"Zeh",D:"Deh",E:"E",F:"Eff",G:"Geh",H:"Hah",I:"I",J:"Jott",K:"Kah",L:"Ell",M:"Emm",N:"Enn",O:"O",P:"Peh",Q:"Kuh",R:"Err",S:"Ess",T:"Teh",U:"U",V:"Fau",W:"Weh",X:"Iks",Y:"Ypsilon",Z:"Zett",Ä:"Ä",Ö:"Ö",Ü:"Ü"};
+  // Varianten für die Einzel-Aufnahme: die erste, die wirklich hörbar ist, wird gespeichert
+  const LETTER_TRY={A:["A.","Ah!","Der Buchstabe A."],E:["E.","Eh!","Der Buchstabe E."],I:["I.","Ih!","Der Buchstabe I."],O:["O.","Oh!","Der Buchstabe O."],U:["U.","Uh!","Der Buchstabe U."],
+    Ä:["Ä.","Äh!","Der Buchstabe Ä."],Ö:["Ö.","Öh!","Der Buchstabe Ö."],Ü:["Ü.","Üh!","Der Buchstabe Ü."],Y:["Ypsilon.","Der Buchstabe Ypsilon."]};
+  // wie lange ist in der Aufnahme wirklich Stimme zu hören? (Sekunden)
+  async function voicedSeconds(blob){ try{ const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext; const oc=new OC(1,1,24000);
+      const buf=await oc.decodeAudioData(await blob.arrayBuffer()); const x=buf.getChannelData(0), win=Math.max(1,Math.round(buf.sampleRate*.01)); let n=0;
+      for(let i=0;i+win<=x.length;i+=win){ let e=0; for(let j=i;j<i+win;j++) e+=x[j]*x[j]; if(Math.sqrt(e/win)>0.02) n++; } return n*.01; }catch{ return 1; } }
   const DE_WIE={A:"Affe",B:"Ball",C:"Clown",D:"Dino",E:"Esel",F:"Fisch",G:"Giraffe",H:"Hund",I:"Igel",J:"Jojo",K:"Katze",L:"Löwe",M:"Maus",N:"Nase",O:"Oma",P:"Pinguin",Q:"Qualle",R:"Rakete",S:"Sonne",T:"Tiger",U:"Uhu",V:"Vogel",W:"Wal",X:"Xylofon",Y:"Yak",Z:"Zebra",Ä:"Äpfel",Ö:"Öl",Ü:"Überraschung"};
   const Lsay=c=>DE_LETTER[c]||c, Lwie=c=>Lsay(c)+(DE_WIE[c]?", wie "+DE_WIE[c]:"");
   function spellDE(word){ return [...String(word).toUpperCase()].map(Lsay).join(". "); }
   const letterMem=new Map();
   function letterAudio(c){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
-    const key="ltr2."+(cfg.tts||"")+"."+c; if(letterMem.has(key)) return letterMem.get(key);
+    const key="ltr3."+(cfg.tts||"")+"."+c; if(letterMem.has(key)) return letterMem.get(key);
     const saved=store.get(key,null);
     if(saved){ try{ const bin=atob(saved.d), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); const p=Promise.resolve(new Blob([u],{type:saved.t})); letterMem.set(key,p); return p; }catch{} }
-    const p=getAudio(Lsay(c)+".", 0.75).then(async b=>{ if(b){ const d=await blobToB64(b); if(d && d.length<60000) store.set(key,{d,t:b.type||"audio/mpeg"}); } else letterMem.delete(key); return b; });
+    const tries=LETTER_TRY[c]||[Lsay(c)+".","Der Buchstabe "+Lsay(c)+"."];
+    const p=(async()=>{ let last=null;
+      for(const t of tries){ const b=await getAudio(t, 0.75); if(!b) break; last=b;
+        if(await voicedSeconds(b) >= 0.15){ const d=await blobToB64(b); if(d && d.length<60000) store.set(key,{d,t:b.type||"audio/mpeg"}); return b; } }
+      letterMem.delete(key); return last; })();
     letterMem.set(key,p); return p; }
   function hlLetter(i,on){ const sp=$("#fly-word")?.querySelectorAll("span"); if(sp&&sp[i]) sp[i].classList.toggle("say",on); }
   function sayLetters(word){ [...String(word).toUpperCase()].forEach((c,i)=>{ sq.push({text:Lsay(c)+".", audio:letterAudio(c), pause:280, onstart:()=>hlLetter(i,true), onend:()=>hlLetter(i,false)}); });
