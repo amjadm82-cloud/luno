@@ -464,10 +464,10 @@ dialog p{margin:0 0 12px;color:#5a5296}
     w(0,"RIFF"); h.setUint32(4,36+u.length,true); w(8,"WAVEfmt "); h.setUint32(16,16,true); h.setUint16(20,1,true); h.setUint16(22,1,true);
     h.setUint32(24,24000,true); h.setUint32(28,48000,true); h.setUint16(32,2,true); h.setUint16(34,16,true); w(36,"data"); h.setUint32(40,u.length,true);
     return new Blob([h.buffer,u],{type:"audio/wav"}); }
-  async function chirpTTS(text){
+  async function chirpTTS(text, rate){
     const key=cfg.ckey||cfg.gkey;
     const r=await fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({input:{text},voice:{languageCode:"de-DE",name:"de-DE-Chirp3-HD-Leda"},audioConfig:{audioEncoding:"MP3",speakingRate:1.05}})});
+      body:JSON.stringify({input:{text},voice:{languageCode:"de-DE",name:"de-DE-Chirp3-HD-Leda"},audioConfig:{audioEncoding:"MP3",speakingRate:rate||1.05}})});
     if(!r.ok) throw new Error("Chirp "+r.status);
     const j=await r.json(); if(!j.audioContent) throw new Error("Chirp leer");
     const bin=atob(j.audioContent), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
@@ -486,7 +486,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     if(r.ok){ const b=findAudio(await r.json()); if(b) return toWavBlob(b); }
     throw new Error("Google "+r.status);
   }
-  async function cloudAudio(text){
+  async function cloudAudio(text, rate){
     if(mode==="proxy"){
       if(serverTts==="browser") return null;
       const r=await fetch(PROXY_URL+"?action=tts",{method:"POST",headers:{"Content-Type":"application/json","X-Luno-Code":accessCode},
@@ -494,13 +494,13 @@ dialog p{margin:0 0 12px;color:#5a5296}
       if(!r.ok) throw new Error("Server "+r.status); return await r.blob();
     }
     if(cfg.tts==="chirp" && (cfg.ckey||cfg.gkey)){
-      try{ return await chirpTTS(text); }catch(e){ if(!cfg.gkey || Date.now()<geminiBlockedUntil) throw e;
+      try{ return await chirpTTS(text, rate); }catch(e){ if(!cfg.gkey || Date.now()<geminiBlockedUntil) throw e;
         try{ return await geminiTTS(text); }catch(e2){ if(/429/.test(String(e2.message))) geminiBlockedUntil=Date.now()+10*60000; throw new Error(/429/.test(String(e2.message))?"Google 429":"Chirp noch nicht freigeschaltet"); } }
     }
     if(cfg.tts==="gemini" && cfg.gkey){
       if(Date.now()>geminiBlockedUntil){ try{ return await geminiTTS(text); }catch(e){ if(!/429/.test(String(e.message))) throw e; geminiBlockedUntil=Date.now()+10*60000; } }
       // Gemini limit reached: try Chirp 3 HD (same voice Leda) with the same Google key
-      try{ return await chirpTTS(text); }catch(e2){ throw new Error("Google 429"); }
+      try{ return await chirpTTS(text, rate); }catch(e2){ throw new Error("Google 429"); }
     }
     if(cfg.tts==="openai" && cfg.okey){
       const r=await fetch("https://api.openai.com/v1/audio/speech",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey,"Content-Type":"application/json"},
@@ -524,13 +524,13 @@ dialog p{margin:0 0 12px;color:#5a5296}
     player.play().catch(()=>{ talking(false); res(); }); }); }
   const audioCache=new Map();
   let ttsPauseUntil=0;
-  function getAudio(text){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
-    const key=(cfg.tts||"")+"|"+text; if(audioCache.has(key)) return audioCache.get(key);
-    const p=cloudAudio(text).catch(e=>{ const m=String(e.message||"");
+  function getAudio(text, rate){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
+    const key=(cfg.tts||"")+"|"+(rate||"")+"|"+text; if(audioCache.has(key)) return audioCache.get(key);
+    const p=cloudAudio(text, rate).catch(e=>{ const m=String(e.message||"");
       if(/429/.test(m)){ ttsPauseUntil=Date.now()+60000; note("Google-Stimme: Gratis-Limit kurz erreicht, Luno spricht 1 Minute mit der Gerätestimme. Mit eingerichteter Abrechnung in AI Studio passiert das nicht."); }
       else note("Die Online-Stimme ging nicht ("+m+"). Ich nehme die Gerätestimme."); return null; });
     if(audioCache.size>40) audioCache.clear(); audioCache.set(key,p); p.then(b=>{ if(!b) audioCache.delete(key); }); return p; }
-  function sayChunk(text){ text=clean(text); if(!text) return; sq.push({text, audio:getAudio(text)}); if(!sqRunning) runQueue(speechGen); }
+  function sayChunk(text, rate){ text=clean(text); if(!text) return; sq.push({text, audio:getAudio(text, rate)}); if(!sqRunning) runQueue(speechGen); }
   async function runQueue(gen){ sqRunning=true;
     while(sq.length && gen===speechGen){ const it=sq.shift(); const blob=await it.audio; if(gen!==speechGen) break;
       if(blob) await playBlob(blob); else await speakBrowser(it.text); }
@@ -849,15 +849,15 @@ Antworte NUR mit JSON in genau dieser Form:
     el.ontouchmove=e=>{ e.preventDefault(); pt(e); };
     fly.key=e=>{ if(e.key==="ArrowUp") fly.targetY=Math.max(.15,fly.targetY-.08); if(e.key==="ArrowDown") fly.targetY=Math.min(.92,fly.targetY+.08); }; addEventListener("keydown",fly.key);
     const msg=$("#fly-msg");
-    const spelled=[...word].join(" – ");
+    const spelled=spellDE(word);
     msg.textContent=word; drawFly(ctx,cv,0);
-    sayChunk("Unser Wort ist: "+cap(word)+"."); sayChunk(spelled+"."); sayChunk(cap(word)+"! Sammle die Buchstaben in der richtigen Reihenfolge. Los geht's!");
+    sayChunk("Unser Wort ist: "+cap(word)+"."); sayChunk(spelled+".", 0.8); sayChunk(cap(word)+"! Sammle die Buchstaben in der richtigen Reihenfolge. Los geht's!");
     Promise.race([speechDone(), new Promise(r=>setTimeout(r,14000))]).then(async()=>{ if(!fly.on) return; for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,700)); if(!fly.on) return; }
       msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
     function loop(now){ if(!fly.on) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
       $("#fly-time").textContent=fly.t.toFixed(1)+" s";
-      fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=5; if(!sqRunning) sayChunk(cap(fly.word)+", "+cap(fly.word)+"!"); }
+      fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=5; if(!sqRunning) sayChunk(cap(fly.word)+".", 0.8); }
       fly.chomp=Math.max(0,fly.chomp-dt*4);
       const speed=.22+fly.idx*.045+fly.t*.002; // gets faster
       fly.y+= (fly.targetY-fly.y)*Math.min(1,dt*8); if(fly.targetX!==undefined) fly.x+=(fly.targetX-fly.x)*Math.min(1,dt*6);
@@ -870,7 +870,7 @@ Antworte NUR mit JSON in genau dieser Form:
       const ar=cv.width/cv.height;
       for(const it of fly.items){ const dx=(it.x-fly.x)*ar, dy=(it.y+Math.sin(it.wob)*.02)-fly.y; if(Math.hypot(dx,dy)<it.r+.05){ it.hit=true;
         if(it.ch===fly.word[fly.idx]){ sfx("good"); const sp=$("#fly-word").querySelectorAll("span"); sp[fly.idx].className="got"; fly.idx++;
-          if(sp[fly.idx]) sp[fly.idx].className="next"; sayChunk(it.ch); fly.chomp=1;
+          if(sp[fly.idx]) sp[fly.idx].className="next"; sayChunk(DE_LETTER[it.ch]||it.ch); fly.chomp=1;
           if(fly.idx>=fly.word.length){ finish(); return; } }
         else { sfx("bad"); fly.mistakes++; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); } } }
       drawFly(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
@@ -880,10 +880,12 @@ Antworte NUR mit JSON in genau dieser Form:
       $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
       $("#fly-end").hidden=false; sfx("win");
       for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+": "+[...fly.word].join(" – ")+". "+(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+": "+spellDE(fly.word)+". "+(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
     }
   }
+  const DE_LETTER={A:"A",B:"Be",C:"Ze",D:"De",E:"E",F:"Eff",G:"Ge",H:"Ha",I:"I",J:"Jott",K:"Ka",L:"Ell",M:"Emm",N:"Enn",O:"O",P:"Pe",Q:"Ku",R:"Err",S:"Ess",T:"Te",U:"U",V:"Vau",W:"We",X:"Ix",Y:"Üpsilon",Z:"Zett",Ä:"Ä",Ö:"Ö",Ü:"Ü"};
+  function spellDE(word){ return [...String(word).toUpperCase()].map(c=>DE_LETTER[c]||c).join(", "); }
   function cap(w){ w=String(w).toLowerCase(); return w.charAt(0).toUpperCase()+w.slice(1); }
   function drawFly(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio;
     ctx.fillStyle="#0b1030"; ctx.fillRect(0,0,W,H);
