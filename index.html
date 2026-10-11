@@ -284,6 +284,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
     <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
     <button class="game" data-game="rennen"><span class="em">🏎️</span><b>Buchstaben-Rennen</b><small>Fahre schnell und sammle die richtigen Buchstaben!</small></button>
+    <button class="game" data-game="karussell"><span class="em">🎠</span><b>Buchstaben-Karussell</b><small>Die Buchstaben drehen sich – tippe die richtigen an!</small></button>
     <button class="game" data-game="flug"><span class="em">🚀</span><b>Buchstaben-Flug</b><small>Fliege durchs All und sammle die Buchstaben!</small></button>
     <button class="game" data-game="geschichte"><span class="em">📖</span><b>Mitmach-Geschichte</b><small>Du entscheidest, wie es weitergeht.</small></button>
   </div>
@@ -431,7 +432,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     for(const c of (list||[]).slice(0,4)){
       const b=document.createElement("button"); b.className="choice";
       const e=document.createElement("span"); e.className="em"; e.textContent=c.emoji||"⭐";
-      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : send(c.text);
+      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : /karussell/i.test(c.text||"") ? chooseFlightWord("karussell") : send(c.text);
       box.append(b);
     }
   }
@@ -805,7 +806,7 @@ Antworte NUR mit JSON in genau dieser Form:
   async function send(text, hidden){
     if(busy || !text) return;
     if(awaitingWord && !hidden){ const words=String(text).replace(/[^A-Za-zÄÖÜäöüß\s]/g," ").trim().split(/\s+/).filter(w=>w.length>=2);
-      if(words.length && words.length<=3){ const w=words[words.length-1]; awaitingWord=false; if(wordMode==="rennen") startRace(w); else startFlight(w); return; }
+      if(words.length && words.length<=3){ const w=words[words.length-1]; awaitingWord=false; if(wordMode==="rennen") startRace(w); else if(wordMode==="karussell") startRing(w); else startFlight(w); return; }
       awaitingWord=false; }
     busy=true; note(""); stopSpeaking(); warmFillers();
     turns.push({role:"user", content:text}); if(turns.length>16) turns=turns.slice(-16); while(turns.length && turns[0].role!=="user") turns.shift();
@@ -864,10 +865,10 @@ Antworte NUR mit JSON in genau dieser Form:
     while(out.length<3 && pool.length) add(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
     return out.slice(0,3); }
   let wordMode="flug";
-  async function chooseFlightWord(mode){ wordMode=mode||"flug"; const title=wordMode==="rennen"?"Buchstaben-Rennen":"Buchstaben-Flug";
+  async function chooseFlightWord(mode){ wordMode=mode||"flug"; const title=wordMode==="rennen"?"Buchstaben-Rennen":wordMode==="karussell"?"Buchstaben-Karussell":"Buchstaben-Flug";
     stopSpeaking(); awaitingWord=true; const ideas=wordIdeas();
     setBubble(title+"! Welches Wort wollen wir buchstabieren? Sag es mir oder tippe eins an!");
-    renderChoices(ideas.map(w=>({text:w,emoji:wordMode==="rennen"?"🏎️":"🚀"})));
+    renderChoices(ideas.map(w=>({text:w,emoji:wordMode==="rennen"?"🏎️":wordMode==="karussell"?"🎠":"🚀"})));
     sayChunk(title+"! Welches Wort wollen wir buchstabieren?"); sayChunk("Sag es mir oder tippe eins an!");
     await speechDone(); if(awaitingWord && cfg.auto && mode!=="claude" && !listening) listen(); }
   /* ---------- Buchstaben-Flug ---------- */
@@ -1001,11 +1002,110 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#2a2160"; ctx.beginPath(); ctx.arc(s*.24,-s*.02,s*.06,0,7); ctx.arc(s*.48,-s*.02,s*.06,0,7); ctx.fill();
     ctx.restore();
   }
-  function endFlight(){ $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
-  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
-  $("#fly-again").onclick=()=>{ const w=fly.word, e=fly.easy, m=fly.mode; endFlight(); m==="race"?startRace(w,e):startFlight(w, e); };
-  $("#fly-easy").onclick=()=>{ const w=fly.word, m=fly.mode; endFlight(); m==="race"?startRace(w,true):startFlight(w, true); };
-  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); chooseFlightWord(m==="race"?"rennen":"flug"); };
+  function endFlight(){ const cvx=$("#fly-cv"); cvx.onpointerdown=null; $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
+  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Buchstaben-Karussell",emoji:"🎠"},{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
+  const restartMode=(m,w,e)=> m==="race"?startRace(w,e): m==="ring"?startRing(w,e): startFlight(w,e);
+  $("#fly-again").onclick=()=>{ const w=fly.word, e=fly.easy, m=fly.mode; endFlight(); restartMode(m,w,e); };
+  $("#fly-easy").onclick=()=>{ const w=fly.word, m=fly.mode; endFlight(); restartMode(m,w,true); };
+  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); chooseFlightWord(m==="race"?"rennen":m==="ring"?"karussell":"flug"); };
+
+  /* ---------- Buchstaben-Karussell: Buchstaben drehen sich ums Wort, das Kind tippt in Reihenfolge ---------- */
+  function startRing(word, easy){
+    word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
+    const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-brake").hidden=true;
+    const age=+cfg.age||6, count=easy?6:(age<=5?7:9);
+    Object.assign(fly,{mode:"ring", on:true, word, idx:0, items:[], t:0, start:0, last:0, playing:false, raf:0, mistakes:0, hearts:5, maxHearts:5, easy:!!easy, points:0, pops:[],
+      emoji:WORD_EMOJI[word]||null, remindIn:10, swapIn:3, spin:easy?.16:.24, count, stars:Array.from({length:70},()=>({x:Math.random(),y:Math.random(),p:Math.random()*6}))});
+    if(!fly.emoji) emojiFor(word).then(e=>{ if(e && fly.word===word){ fly.emoji=e; const h=$("#fly-pic"); if(h) h.textContent=e; } });
+    const box=$("#fly-word"); box.replaceChildren(); const pic=document.createElement("b"); pic.id="fly-pic"; pic.className="fly-pic"; pic.textContent=fly.emoji||"🎠"; box.append(pic);
+    [...word].forEach((ch,i)=>{ const sp=document.createElement("span"); sp.textContent=ch; if(i===0) sp.className="next"; box.append(sp); });
+    $("#fly-time").textContent="0.0 s"; renderHearts(); $("#fly-oops").hidden=true;
+    const fit=()=>{ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; }; fit(); fly.fit=fit; addEventListener("resize",fit);
+    // Kreise auf 1-2 Ringen verteilen
+    const two=count>7, outerN=two?Math.ceil(count*.6):count;
+    const randLetter=avoid=>{ let c; do{ c=ALPHA[Math.floor(Math.random()*ALPHA.length)]; }while(c===avoid); return c; };
+    for(let i=0;i<count;i++){ const ring=i<outerN?0:1, n=ring?count-outerN:outerN, k=ring?i-outerN:i;
+      fly.items.push({ch:randLetter(), ring, ang:k/n*Math.PI*2+(ring?.4:0), a:0, st:"in", t:0, bad:0, hue:Math.floor(Math.random()*360)}); }
+    const need=()=>fly.word[fly.idx];
+    function ensureNeed(){ const nd=need(); if(!nd) return; if(fly.items.some(it=>it.ch===nd && it.st==="in")) return;
+      const c=fly.items.filter(it=>it.st==="in"); const it=c[Math.floor(Math.random()*c.length)]; if(it){ it.ch=nd; it.a=0; it.hue=Math.floor(Math.random()*360); } }
+    ensureNeed(); fly.ensureNeed=ensureNeed; fly.randLetter=randLetter;
+    const geo=()=>{ const W=cv.width, H=cv.height, top=H*.13, cx=W/2, cy=top+(H-top)*.5, R=Math.min(W*.42,(H-top)*.4); return {cx,cy,R,r:R*(fly.easy?.17:.15)}; };
+    const pos=(it,g)=>{ const rr=it.ring?g.R*.64:g.R; const wob=1+Math.sin(it.ang*3+fly.t*1.3)*.03; return {x:g.cx+Math.cos(it.ang)*rr*wob, y:g.cy+Math.sin(it.ang)*rr*wob}; };
+    fly.geo=geo; fly.pos=pos;
+    cv.onpointerdown=e=>{ if(!fly.playing) return; e.preventDefault(); const rc=cv.getBoundingClientRect(), d=cv.width/rc.width, px=(e.clientX-rc.left)*d, py=(e.clientY-rc.top)*d, g=geo();
+      let best=null, bd=1e9; for(const it of fly.items){ if(it.st!=="in" || it.a<.5) continue; const p=pos(it,g), dd=Math.hypot(p.x-px,p.y-py); if(dd<g.r*1.25 && dd<bd){ bd=dd; best=it; } }
+      if(!best) return; const it=best, nd=need(), oops=$("#fly-oops");
+      if(it.ch===nd){ sfx("good"); const p=pos(it,g); it.st="fly"; it.t=0; it.fx=p.x; it.fy=p.y; fly.points++; fly.pops.push({x:g.cx,y:g.cy-g.R*.3,t:0,txt:"+1"});
+        const sp=$("#fly-word").querySelectorAll("span"); sp[fly.idx].className="got"; fly.idx++; if(sp[fly.idx]) sp[fly.idx].className="next"; fly.remindIn=10;
+        stopSpeaking(); if(fly.idx>=fly.word.length){ finishRing(); return; }
+        sayChunk("Gut gemacht! "+cap(fly.word)+"."+nextHint(), 0.9); setTimeout(ensureNeed,500); }
+      else { sfx("bad"); fly.mistakes++; it.bad=1; setTimeout(()=>{ if(it.st==="in") it.st="out"; },700); el.classList.remove("shake","hurt"); void el.offsetWidth; el.classList.add("shake","hurt");
+        fly.hearts=Math.max(0,fly.hearts-1); renderHearts(true);
+        if(fly.hearts===0){ gameOver(); return; }
+        oops.textContent="✗ Das war "+it.ch+". Wir brauchen "+nd+"! "+(fly.hearts===1?"Noch 1 Herz!":"Noch "+fly.hearts+" Herzen!"); oops.hidden=false;
+        clearTimeout(fly.oopsT); fly.oopsT=setTimeout(()=>{ oops.hidden=true; },1800);
+        stopSpeaking(); sayChunk("Hoppla! Das war ein "+Lsay(it.ch)+". Wir brauchen ein "+Lwie(nd)+".", 0.85); } };
+    const msg=$("#fly-msg"); msg.textContent=word; drawRing(ctx,cv,0);
+    sayChunk("Unser Wort ist: "+cap(word)+"."); sayLetters(word);
+    sayChunk("Die Buchstaben drehen sich im Kreis. Tippe sie in der richtigen Reihenfolge an! Zuerst suchst du das "+Lwie(word[0])+"."+(easy?" Diesmal leuchtet der richtige Buchstabe.":" Du hast fünf Herzen.")+" Los geht's!");
+    Promise.race([speechDone(), new Promise(r=>setTimeout(r,16000))]).then(async()=>{ if(!fly.on) return;
+      for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,700)); if(!fly.on) return; }
+      msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
+      fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
+    function loop(now){ if(!fly.on || !fly.playing) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
+      $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=10; if(!sqRunning) sayChunk(cap(fly.word)+"."+nextHint(), 0.85); }
+      for(const it of fly.items){ it.ang+=fly.spin*dt*(it.ring?-1.3:1); it.bad=Math.max(0,it.bad-dt*1.5);
+        if(it.st==="in") it.a=Math.min(1,it.a+dt*2);
+        else if(it.st==="out"){ it.a-=dt*2.5; if(it.a<=0){ it.ch=randLetter(need()); it.hue=Math.floor(Math.random()*360); it.st="in"; it.a=0; ensureNeed(); } }
+        else if(it.st==="fly"){ it.t+=dt*2.2; if(it.t>=1){ it.st="in"; it.a=0; it.ch=randLetter(); ensureNeed(); } } }
+      // ab und zu verschwindet ein falscher Buchstabe und ein neuer taucht auf
+      fly.swapIn-=dt; if(fly.swapIn<=0){ fly.swapIn=fly.easy?4:2.8; const c=fly.items.filter(it=>it.st==="in" && it.a>=1 && it.ch!==need()); const it=c[Math.floor(Math.random()*c.length)]; if(it) it.st="out"; }
+      fly.pops=fly.pops.filter(p=>(p.t+=dt)<1);
+      drawRing(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
+    function finishRing(){ fly.playing=false; cancelAnimationFrame(fly.raf); const t=fly.t, n=fly.word.length;
+      const timeStars = t < n*4*(fly.easy?1.5:1) ? 3 : t < n*7*(fly.easy?1.5:1) ? 2 : 1;
+      const stars = Math.max(1, Math.min(timeStars, fly.mistakes===0?3:fly.mistakes<=2?2:1));
+      setTimeout(()=>drawRing(ctx,cv,0),0);
+      $("#fly-easy").hidden=true; $("#fly-new").hidden=false;
+      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-endtxt").textContent="🎠 "+(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gefunden! "+fly.points+" Punkte, "+(fly.mistakes===0?"kein Fehler!":fly.mistakes===1?"1 Fehler.":fly.mistakes+" Fehler.");
+      $("#fly-end").hidden=false; sfx("win"); for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
+      sayChunk("Super! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal mit weniger Fehlern?");
+      if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); } }
+  }
+  function drawRing(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio, g=fly.geo(), now=performance.now()/1000;
+    const bg=ctx.createRadialGradient(g.cx,g.cy,g.R*.2,g.cx,g.cy,Math.max(W,H)*.75); bg.addColorStop(0,"#3b2f8f"); bg.addColorStop(1,"#121641"); ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    for(const s of fly.stars){ ctx.globalAlpha=.35+.35*Math.sin(now*1.5+s.p); ctx.fillStyle="#fff"; ctx.fillRect(s.x*W,s.y*H,2*d,2*d); } ctx.globalAlpha=1;
+    // Bahnen
+    ctx.lineWidth=2*d; ctx.setLineDash([6*d,10*d]); ctx.strokeStyle="#ffffff30";
+    ctx.beginPath(); ctx.arc(g.cx,g.cy,g.R,0,7); ctx.stroke(); if(fly.items.some(it=>it.ring)){ ctx.beginPath(); ctx.arc(g.cx,g.cy,g.R*.64,0,7); ctx.stroke(); } ctx.setLineDash([]);
+    // Mitte: das Wort-Bild tanzt, darunter das Wort
+    const bob=Math.sin(now*2.2)*g.R*.03, rot=Math.sin(now*1.6)*.12;
+    ctx.save(); ctx.translate(g.cx,g.cy-g.R*.08+bob); ctx.rotate(rot);
+    ctx.globalAlpha=.22; ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.arc(0,0,g.R*.26,0,7); ctx.fill(); ctx.globalAlpha=1;
+    ctx.font=Math.round(g.R*.3)+"px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(fly.emoji||"🎠",0,0); ctx.restore();
+    const n=fly.word.length, cw=Math.min(g.R*.2, g.R*1.0/n), y0=g.cy+g.R*.24;
+    for(let i=0;i<n;i++){ const x=g.cx+(i-(n-1)/2)*cw*1.1, got=i<fly.idx, nx=i===fly.idx;
+      ctx.fillStyle=got?"#ffd36e":"#ffffff18"; ctx.strokeStyle=nx?"#5ee6c4":"#ffffff70"; ctx.lineWidth=(nx?4:2)*d;
+      ctx.beginPath(); ctx.roundRect(x-cw*.48,y0-cw*.6,cw*.96,cw*1.2,cw*.2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=got?"#2a2160":nx?"#5ee6c4":"#ffffff90"; ctx.font="800 "+Math.round(cw*.75)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(fly.word[i],x,y0+cw*.05); }
+    // Buchstaben-Kreise
+    const nd=fly.word[fly.idx];
+    for(const it of fly.items){ if(it.a<=0) continue; let p=fly.pos(it,g), r=g.r, a=it.a;
+      if(it.st==="fly"){ const k=it.t*it.t; p={x:it.fx+(g.cx-it.fx)*k, y:it.fy+(g.cy-it.fy)*k}; r=g.r*(1-.6*k); a=1-k*.8; }
+      const glow=fly.easy && it.ch===nd && it.st==="in";
+      ctx.globalAlpha=a;
+      if(glow){ ctx.beginPath(); ctx.arc(p.x,p.y,r*(1.3+Math.sin(now*5)*.08),0,7); ctx.fillStyle="#ffd36e55"; ctx.fill(); }
+      const sh=it.bad?Math.sin(now*60)*r*.12*it.bad:0;
+      ctx.beginPath(); ctx.arc(p.x+sh,p.y,r,0,7); ctx.fillStyle=it.bad>0?"#ff6b6b":glow||it.st==="fly"?"#ffd36e":"hsl("+it.hue+",80%,64%)"; ctx.fill();
+      ctx.lineWidth=(glow?6:4)*d; ctx.strokeStyle="#fff"; ctx.stroke();
+      ctx.fillStyle="#2a2160"; ctx.font="800 "+Math.round(r*1.15)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(it.ch,p.x+sh,p.y+r*.06); }
+    ctx.globalAlpha=1;
+    for(const pp of fly.pops){ ctx.globalAlpha=1-pp.t; ctx.fillStyle="#ffd36e"; ctx.font="800 "+Math.round(g.R*.14)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.fillText(pp.txt,pp.x,pp.y-pp.t*g.R*.25); } ctx.globalAlpha=1;
+    ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(18*d)+"px Nunito, sans-serif"; ctx.textAlign="left"; ctx.textBaseline="bottom"; ctx.fillText("⭐ "+fly.points+" Punkte",16*d,H-16*d);
+  }
 
   /* ---------- Buchstaben-Rennen (pseudo-3D road) ---------- */
   function startRace(word, easy){
@@ -1145,7 +1245,7 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(H*.035)+"px Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(Math.round(fly.speed*160)+" km/h", W-W*.095, H-H*.07);
   }
 
-  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
+  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } if(key==="karussell"){ chooseFlightWord("karussell"); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"&&v!=="chirp"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
