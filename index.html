@@ -270,9 +270,14 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
       <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
       <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
-    <label for="p-pkey">Pixabay-Schlüssel (optional, für schönere Bilder)</label>
-    <input id="p-pkey" type="password" autocomplete="off" placeholder="leer = Bilder von Wikipedia">
-    <div class="hint">Gratis auf pixabay.com/api/docs nach der Anmeldung.</div>
+    <h3>Bilder (optional, alle gratis)</h3>
+    <div class="hint">Ohne Schlüssel kommen die Bilder von Wikipedia und Openverse. Mit einem Schlüssel nimmt Luno zuerst diese Quelle.</div>
+    <label for="p-pkey">Pixabay-Schlüssel</label>
+    <input id="p-pkey" type="password" autocomplete="off" placeholder="pixabay.com/api/docs">
+    <label for="p-ukey">Unsplash Access Key</label>
+    <input id="p-ukey" type="password" autocomplete="off" placeholder="unsplash.com/developers">
+    <label for="p-xkey">Pexels-Schlüssel</label>
+    <input id="p-xkey" type="password" autocomplete="off" placeholder="pexels.com/api">
     <label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
     <input id="p-young" type="range" min="0" max="15" step="1" value="0">
     <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div>
@@ -299,7 +304,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))));
   let setupDone = false;
   try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
-    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["pkey","akey","gkey","okey","name","age","young","tts","model","auto"];
+    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["pkey","ukey","xkey","akey","gkey","okey","name","age","young","tts","model","auto"];
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
@@ -528,6 +533,21 @@ Antworte NUR mit JSON in genau dieser Form:
     const r=await fetch(u); if(!r.ok) return null; const j=await r.json(); const h=(j.hits||[])[0];
     return h ? {src:h.webformatURL, credit:"Bild: Pixabay", link:h.pageURL} : null;
   }
+  async function unsplashImage(q){
+    const r=await fetch("https://api.unsplash.com/search/photos?per_page=5&orientation=landscape&content_filter=high&query="+encodeURIComponent(q),{headers:{"Authorization":"Client-ID "+cfg.ukey}});
+    if(!r.ok) return null; const h=((await r.json()).results||[])[0];
+    return h ? {src:h.urls.regular, credit:"Foto: "+(h.user?.name||"Unsplash")+" / Unsplash", link:h.links?.html} : null;
+  }
+  async function pexelsImage(q){
+    const r=await fetch("https://api.pexels.com/v1/search?per_page=5&orientation=landscape&query="+encodeURIComponent(q),{headers:{"Authorization":cfg.xkey}});
+    if(!r.ok) return null; const h=((await r.json()).photos||[])[0];
+    return h ? {src:h.src.large, credit:"Foto: "+(h.photographer||"Pexels")+" / Pexels", link:h.url} : null;
+  }
+  async function openverseImage(q){
+    const r=await fetch("https://api.openverse.org/v1/images/?page_size=5&mature=false&aspect_ratio=wide&q="+encodeURIComponent(q));
+    if(!r.ok) return null; const h=((await r.json()).results||[]).find(x=>x.url);
+    return h ? {src:h.thumbnail||h.url, credit:"Bild: "+(h.creator||"Openverse")+" ("+String(h.license||"cc").toUpperCase()+")", link:h.foreign_landing_url} : null;
+  }
   async function wikiImage(term){
     const u="https://de.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch="+encodeURIComponent(term)+"&prop=pageimages|info&piprop=thumbnail&pithumbsize=900&inprop=url";
     const r=await fetch(u); if(!r.ok) return null; const j=await r.json();
@@ -540,9 +560,15 @@ Antworte NUR mit JSON in genau dieser Form:
     $("#sketch-title").textContent="Luno zeigt: "+what; $("#sketch-credit").textContent=""; $("#sketch-credit").removeAttribute("href");
     area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild …"; area.append(wait);
     let found=null;
-    try{ if(cfg.pkey) found=await pixabayImage(img.en||what); }catch{}
-    try{ if(!found && img.wiki) found=await wikiImage(img.wiki); }catch{}
-    try{ if(!found) found=await wikiImage(what); }catch{}
+    const q=img.en||what;
+    const sources=[
+      ()=>cfg.pkey && pixabayImage(q),
+      ()=>cfg.ukey && unsplashImage(q),
+      ()=>cfg.xkey && pexelsImage(q),
+      ()=>img.wiki && wikiImage(img.wiki),
+      ()=>wikiImage(what),
+      ()=>openverseImage(q)];
+    for(const src of sources){ if(found) break; try{ found=await src()||null; }catch{} }
     if(!found){ wait.textContent="Hmm, ich habe kein gutes Bild gefunden. Frag mich nach etwas anderem!"; return; }
     const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
     im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.credit; if(found.link) $("#sketch-credit").href=found.link; };
@@ -593,14 +619,14 @@ Antworte NUR mit JSON in genau dieser Form:
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-ukey").value=cfg.ukey||""; $("#p-xkey").value=cfg.xkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), young:+$("#p-young").value};
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), ukey:$("#p-ukey").value.trim(), xkey:$("#p-xkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-link").onclick=async()=>{ readForm();
-    const d={akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const d={akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,ukey:cfg.ukey,xkey:cfg.xkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
