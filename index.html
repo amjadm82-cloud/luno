@@ -222,17 +222,23 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <h3>Stimme</h3>
     <label for="p-tts">Stimme von</label>
     <select id="p-tts">
+      <option value="gemini">Google Gemini – Leda (empfohlen)</option>
       <option value="browser">Gerät (kostenlos)</option>
       <option value="openai">OpenAI (natürlich)</option>
       <option value="eleven">ElevenLabs (sehr natürlich)</option>
     </select>
     <div id="tts-browser"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
       <div class="hint">Tipp für Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
+    <div id="tts-gemini" hidden><label for="p-gkey">Google Gemini API-Schlüssel</label><input id="p-gkey" type="password" placeholder="AIza…" autocomplete="off">
+      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey.</div></div>
     <div id="tts-openai" hidden><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-…" autocomplete="off">
       <label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div>
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
       <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
       <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
+    <label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
+    <input id="p-young" type="range" min="0" max="15" step="1" value="0">
+    <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div>
     <div class="dlgbtns"><button type="button" class="hbtn ghost" id="p-test">Stimme testen</button><button type="button" class="hbtn ghost" id="p-reset">Neu starten</button><button class="hbtn" id="p-save">Speichern</button></div>
   </form>
 </dialog>
@@ -244,7 +250,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     get(k, d){ try{ const v = localStorage.getItem("luno."+k); return v==null?d:JSON.parse(v);}catch{ return d; } },
     set(k, v){ try{ localStorage.setItem("luno."+k, JSON.stringify(v)); }catch{} }
   };
-  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"browser", voice:"", okey:"", ovoice:"coral", ekey:"", evoice:""};
+  const DEF = {name:"", age:5, auto:true, akey:"", model:"claude-haiku-5-5", tts:"browser", voice:"", gkey:"", young:0, okey:"", ovoice:"coral", ekey:"", evoice:""};
   let cfg = Object.assign({}, DEF, store.get("cfg", {}));
   let stars = store.get("stars", 0);
   let turns = [];
@@ -316,6 +322,27 @@ dialog p{margin:0 0 12px;color:#5a5296}
       u.onstart=()=>talking(true); u.onend=u.onerror=()=>{ talking(false); res(); };
       speechSynthesis.speak(u);
     }catch{ res(); } }); }
+  const GEMINI_STYLE="Sprich wie ein fröhliches sechsjähriges Kind: hohe, helle Stimme, lebendig, neugierig und verspielt. Natürliches Hochdeutsch.";
+  function findAudio(o){ let best=""; (function walk(n){ if(n&&typeof n==="object") for(const k in n){ const v=n[k];
+    if(k==="data"&&typeof v==="string"&&v.length>best.length) best=v; else walk(v); } })(o); return best; }
+  function toWavBlob(b64){ const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    if(bin.slice(0,4)==="RIFF") return new Blob([u],{type:"audio/wav"});
+    const h=new DataView(new ArrayBuffer(44)), w=(o,s)=>{ for(let i=0;i<s.length;i++) h.setUint8(o+i,s.charCodeAt(i)); };
+    w(0,"RIFF"); h.setUint32(4,36+u.length,true); w(8,"WAVEfmt "); h.setUint32(16,16,true); h.setUint16(20,1,true); h.setUint16(22,1,true);
+    h.setUint32(24,24000,true); h.setUint32(28,48000,true); h.setUint16(32,2,true); h.setUint16(34,16,true); w(36,"data"); h.setUint32(40,u.length,true);
+    return new Blob([h.buffer,u],{type:"audio/wav"}); }
+  async function geminiTTS(text){
+    const H={"x-goog-api-key":cfg.gkey,"Content-Type":"application/json"};
+    let r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:H,body:JSON.stringify({model:"gemini-3.8-flash-tts",
+      input:[{type:"user_input",content:[{type:"text",text,annotations:[{type:"speech_metadata",style:GEMINI_STYLE}]}]}],
+      response_format:{type:"audio",mime_type:"audio/wav"},generation_config:{speech_config:[{voice:"Leda"}]}})});
+    if(r.ok){ const b=findAudio(await r.json()); if(b) return toWavBlob(b); }
+    r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",{method:"POST",headers:H,body:JSON.stringify({
+      contents:[{parts:[{text:GEMINI_STYLE+"\n\nSag genau diesen Text:\n"+text}]}],
+      generationConfig:{responseModalities:["AUDIO"],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:"Leda"}}}}})});
+    if(r.ok){ const b=findAudio(await r.json()); if(b) return toWavBlob(b); }
+    throw new Error("Google "+r.status);
+  }
   async function cloudAudio(text){
     if(mode==="proxy"){
       if(serverTts==="browser") return null;
@@ -323,6 +350,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
         body:JSON.stringify({text,provider:serverTts,voice:cfg.ovoice||"coral"})});
       if(!r.ok) throw new Error("Server "+r.status); return await r.blob();
     }
+    if(cfg.tts==="gemini" && cfg.gkey) return await geminiTTS(text);
     if(cfg.tts==="openai" && cfg.okey){
       const r=await fetch("https://api.openai.com/v1/audio/speech",{method:"POST",headers:{"Authorization":"Bearer "+cfg.okey,"Content-Type":"application/json"},
         body:JSON.stringify({model:"gpt-4o-mini-tts",voice:cfg.ovoice||"coral",input:text,response_format:"mp3",
@@ -343,6 +371,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     if(cfg.tts!=="browser"){
       try{ const blob=await cloudAudio(text);
         if(blob){ return await new Promise(res=>{ const url=URL.createObjectURL(blob); player.src=url;
+          const rate=1+(+cfg.young||0)/100; player.preservesPitch=false; player.mozPreservesPitch=false; player.webkitPreservesPitch=false; player.playbackRate=rate; player.defaultPlaybackRate=rate;
           player.onplay=()=>talking(true); player.onended=player.onerror=()=>{ talking(false); URL.revokeObjectURL(url); res(); };
           player.play().catch(()=>{ talking(false); res(); }); }); }
       }catch(e){ note("Die Online-Stimme ging nicht ("+e.message+"). Ich nehme die Gerätestimme."); }
@@ -465,11 +494,12 @@ Antworte NUR mit JSON in genau dieser Form:
   function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
-  function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
+  function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
   function fillForm(){ $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+  $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim()};
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-test").onclick=()=>{ readForm(); speak("Hallo"+(cfg.name?" "+cfg.name:"")+"! Ich bin Luno. Wollen wir zusammen ein Rätsel spielen?"); };

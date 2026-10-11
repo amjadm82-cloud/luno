@@ -8,7 +8,11 @@
 
 // ===================== EINSTELLUNGEN =====================
 $ANTHROPIC_KEY  = 'HIER-ANTHROPIC-SCHLUESSEL-EINFUEGEN';   // sk-ant-...
-$OPENAI_KEY     = '';   // optional, für natürliche Stimme (sk-...)
+$GEMINI_KEY     = '';   // empfohlen: Google-Stimme "Leda" (Schlüssel von aistudio.google.com/apikey)
+$GEMINI_MODEL   = 'gemini-3.8-flash-tts';
+$GEMINI_VOICE   = 'Leda';
+$GEMINI_STYLE   = 'Sprich wie ein fröhliches sechsjähriges Kind: hohe, helle Stimme, lebendig, neugierig und verspielt. Natürliches Hochdeutsch.';
+$OPENAI_KEY     = '';   // optional, Alternative zu Google (sk-...)
 $ELEVEN_KEY     = '';   // optional, für ElevenLabs-Stimme
 $ELEVEN_VOICE   = '';   // optional, ElevenLabs Voice-ID
 $ACCESS_CODE    = 'HIER-EIGENEN-CODE-WAEHLEN';             // z. B. sternenstaub-4821 (steht später im Familien-Link)
@@ -48,6 +52,45 @@ function post($url, $headers, $body) {
   return [$status ?: 502, $res];
 }
 
+// sucht in einer API-Antwort das längste base64-Audiofeld ("data")
+function find_audio($node, &$best) {
+  if (is_array($node)) {
+    foreach ($node as $k => $v) {
+      if ($k === 'data' && is_string($v) && strlen($v) > strlen($best)) $best = $v;
+      else find_audio($v, $best);
+    }
+  }
+}
+function pcm_to_wav($pcm, $rate = 24000) {
+  $len = strlen($pcm);
+  return 'RIFF' . pack('V', 36 + $len) . 'WAVEfmt ' . pack('VvvVVvv', 16, 1, 1, $rate, $rate * 2, 2, 16) . 'data' . pack('V', $len) . $pcm;
+}
+function gemini_tts($text, $key, $model, $voice, $style) {
+  // 1) aktuelle Interactions-API
+  [$st, $res] = post('https://generativelanguage.googleapis.com/v1beta/interactions',
+    ['x-goog-api-key: ' . $key, 'Content-Type: application/json'],
+    json_encode(['model' => $model,
+      'input' => [['type' => 'user_input', 'content' => [['type' => 'text', 'text' => $text,
+        'annotations' => [['type' => 'speech_metadata', 'style' => $style]]]]]],
+      'response_format' => ['type' => 'audio', 'mime_type' => 'audio/wav'],
+      'generation_config' => ['speech_config' => [['voice' => $voice]]]]));
+  if ($st === 200) {
+    $b = ''; find_audio(json_decode($res, true), $b);
+    if ($b !== '') { $a = base64_decode($b); return substr($a, 0, 4) === 'RIFF' ? $a : pcm_to_wav($a); }
+  }
+  // 2) Rückfall: generateContent mit dem Preview-Modell
+  [$st, $res] = post('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent',
+    ['x-goog-api-key: ' . $key, 'Content-Type: application/json'],
+    json_encode(['contents' => [['parts' => [['text' => $style . "\n\nSag genau diesen Text:\n" . $text]]]],
+      'generationConfig' => ['responseModalities' => ['AUDIO'],
+        'speechConfig' => ['voiceConfig' => ['prebuiltVoiceConfig' => ['voiceName' => $voice]]]]]));
+  if ($st === 200) {
+    $b = ''; find_audio(json_decode($res, true), $b);
+    if ($b !== '') { $a = base64_decode($b); return substr($a, 0, 4) === 'RIFF' ? $a : pcm_to_wav($a); }
+  }
+  return null;
+}
+
 if ($action === 'chat') {
   $model = in_array($in['model'] ?? '', ['claude-haiku-5-5', 'claude-sonnet-5-5'], true) ? $in['model'] : 'claude-haiku-5-5';
   $system = mb_substr((string)($in['system'] ?? ''), 0, 6000);
@@ -67,6 +110,12 @@ if ($action === 'tts') {
   $text = mb_substr(trim((string)($in['text'] ?? '')), 0, 600);
   if ($text === '') fail(400, 'text');
   $provider = $in['provider'] ?? '';
+  if ($GEMINI_KEY && $provider !== 'openai' && $provider !== 'eleven') {
+    $wav = gemini_tts($text, $GEMINI_KEY, $GEMINI_MODEL, $GEMINI_VOICE, $GEMINI_STYLE);
+    if ($wav !== null) { header('Content-Type: audio/wav'); echo $wav; exit; }
+    if (!$OPENAI_KEY) fail(502, 'gemini tts');
+    $provider = 'openai';
+  }
   if ($provider === 'eleven' && $ELEVEN_KEY && $ELEVEN_VOICE) {
     [$st, $res] = post('https://api.elevenlabs.io/v1/text-to-speech/' . rawurlencode($ELEVEN_VOICE) . '?output_format=mp3_44100_128',
       ['xi-api-key: ' . $ELEVEN_KEY, 'Content-Type: application/json'],
@@ -85,7 +134,7 @@ if ($action === 'tts') {
 
 if ($action === 'info') {
   header('Content-Type: application/json');
-  echo json_encode(['ok' => true, 'tts' => ($ELEVEN_KEY && $ELEVEN_VOICE) ? 'eleven' : ($OPENAI_KEY ? 'openai' : 'browser')]); exit;
+  echo json_encode(['ok' => true, 'tts' => $GEMINI_KEY ? 'gemini' : (($ELEVEN_KEY && $ELEVEN_VOICE) ? 'eleven' : ($OPENAI_KEY ? 'openai' : 'browser'))]); exit;
 }
 
 fail(404, 'action');
