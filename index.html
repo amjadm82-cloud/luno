@@ -898,7 +898,7 @@ Antworte NUR mit JSON in genau dieser Form:
   function startFlight(word, easy){
     word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
     const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-brake").hidden=true;
-    Object.assign(fly,{mode:"fly", on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:0, y:0.5, x:0.18, targetY:0.5, stars:[], playing:false, raf:0, mistakes:0, hearts:3, maxHearts:3, lastChance:false, easy:!!easy, emoji:WORD_EMOJI[word]||null, chomp:0, remindIn:5});
+    Object.assign(fly,{activeT:0, mode:"fly", on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:0, y:0.5, x:0.18, targetY:0.5, stars:[], playing:false, raf:0, mistakes:0, hearts:3, maxHearts:3, lastChance:false, easy:!!easy, emoji:WORD_EMOJI[word]||null, chomp:0, remindIn:5});
     if(!fly.emoji) emojiFor(word).then(e=>{ if(e && fly.word===word){ fly.emoji=e; const h=$("#fly-pic"); if(h) h.textContent=e; } });
     for(let i=0;i<80;i++) fly.stars.push({x:Math.random(),y:Math.random(),z:Math.random()*0.8+0.2});
     const box=$("#fly-word"); box.replaceChildren(); const pic=document.createElement("b"); pic.id="fly-pic"; pic.className="fly-pic"; pic.textContent=fly.emoji||"🚀"; box.append(pic); [...word].forEach((ch,i)=>{ const sp=document.createElement("span"); sp.textContent=ch; if(i===0) sp.className="next"; box.append(sp); });
@@ -916,7 +916,7 @@ Antworte NUR mit JSON in genau dieser Form:
       msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
     function loop(now){ if(!fly.on) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
-      $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      $("#fly-time").textContent=fly.t.toFixed(1)+" s"; trackActive(dt);
       fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=10; if(!sqRunning) sayChunk(cap(fly.word)+"."+nextHint(), 0.85); }
       fly.chomp=Math.max(0,fly.chomp-dt*4);
       const speed=(.22+fly.idx*.045+fly.t*.002)*(fly.easy?.65:1); // gets faster
@@ -942,14 +942,13 @@ Antworte NUR mit JSON in genau dieser Form:
           stopSpeaking(); sayChunk("Hoppla! Das war ein "+Lsay(it.ch)+". Wir brauchen ein "+Lwie(need)+".", 0.85); } } }
       drawFly(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
     function finish(){ fly.playing=false; const t=fly.t, n=fly.word.length;
-      const timeStars = t < n*3.5*(fly.easy?1.5:1) ? 3 : t < n*6*(fly.easy?1.5:1) ? 2 : 1;
-      const stars = Math.max(1, Math.min(timeStars, fly.hearts+ (fly.hearts===3?0:1)));
+      const stars = calcStars();
       $("#fly-easy").hidden=true; $("#fly-new").hidden=false;
-      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(fly.maxHearts-stars);
       $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
       $("#fly-end").hidden=false; sfx("win");
       for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk((stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk(starWords(stars));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
     }
   }
@@ -986,6 +985,13 @@ Antworte NUR mit JSON in genau dieser Form:
     $("#fly-endtxt").textContent=(fly.mode==="race"?"Oh nein, das Auto ist stehen geblieben!":"Oh nein, keine Herzen mehr!")+" Probier es nochmal. Willst du es diesmal leichter? Dann sind die richtigen Buchstaben groß und langsamer.";
     $("#fly-easy").hidden=false; $("#fly-new").hidden=true; $("#fly-end").hidden=false;
     stopSpeaking(); sayChunk((fly.mode==="race"?"Oh nein, das Auto ist stehen geblieben!":"Oh nein, keine Herzen mehr!")+" Unser Wort war "+cap(fly.word)+".", 0.9); sayLetters(fly.word); sayChunk("Probier es nochmal! Du kannst es auch leichter machen.", 0.9); }
+  // Sterne: nur Fehler kosten Sterne. Zeit zählt nur, solange der gesuchte Buchstabe wirklich zu sehen war; nur sehr langes Trödeln kostet 1 Stern.
+  function calcStars(){ const max=fly.maxHearts||3, n=fly.word.length; let st=max-fly.mistakes;
+    if((fly.activeT||0) > n*12*(fly.easy?1.5:1)) st--; return Math.max(1,Math.min(max,st)); }
+  function starWords(st){ const max=fly.maxHearts||3, w=["","Ein Stern","Zwei Sterne","Drei Sterne","Vier Sterne","Fünf Sterne"][st]||st+" Sterne";
+    return st===max ? w+"! Alle Sterne, perfekt!" : fly.mistakes===0 ? w+"! Kein Fehler, nur etwas langsam. Super!" : w+"! Mit weniger Fehlern schaffst du "+max+"!"; }
+  function trackActive(dt){ const nd=fly.word[fly.idx]; if(!nd) return;
+    if(fly.items.some(it=>it.ch===nd && !it.hit && !it.done && (it.st===undefined||it.st==="in") && (it.d===undefined||it.d<0.9) && (it.x===undefined||it.x<1))) fly.activeT=(fly.activeT||0)+dt; }
   function nextHint(){ const nx=fly.word[fly.idx]; return nx ? " Jetzt suchst du das "+Lwie(nx)+"." : ""; }
   function cap(w){ w=String(w).toLowerCase(); return w.charAt(0).toUpperCase()+w.slice(1); }
   function drawFly(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio;
@@ -1030,7 +1036,7 @@ Antworte NUR mit JSON in genau dieser Form:
     word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
     const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-brake").hidden=true;
     const age=+cfg.age||6, count=easy?6:(age<=5?7:9);
-    Object.assign(fly,{mode:"ring", on:true, word, idx:0, items:[], t:0, start:0, last:0, playing:false, raf:0, mistakes:0, hearts:5, maxHearts:5, easy:!!easy, points:0, pops:[],
+    Object.assign(fly,{activeT:0, mode:"ring", on:true, word, idx:0, items:[], t:0, start:0, last:0, playing:false, raf:0, mistakes:0, hearts:5, maxHearts:5, easy:!!easy, points:0, pops:[],
       emoji:WORD_EMOJI[word]||null, remindIn:10, swapIn:3, spin:easy?.16:.24, count, stars:Array.from({length:70},()=>({x:Math.random(),y:Math.random(),p:Math.random()*6}))});
     if(!fly.emoji) emojiFor(word).then(e=>{ if(e && fly.word===word){ fly.emoji=e; const h=$("#fly-pic"); if(h) h.textContent=e; } });
     const box=$("#fly-word"); box.replaceChildren(); const pic=document.createElement("b"); pic.id="fly-pic"; pic.className="fly-pic"; pic.textContent=fly.emoji||"🎠"; box.append(pic);
@@ -1070,7 +1076,7 @@ Antworte NUR mit JSON in genau dieser Form:
       msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
     function loop(now){ if(!fly.on || !fly.playing) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
-      $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      $("#fly-time").textContent=fly.t.toFixed(1)+" s"; trackActive(dt);
       fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=10; if(!sqRunning) sayChunk(cap(fly.word)+"."+nextHint(), 0.85); }
       for(const it of fly.items){ it.ang+=fly.spin*dt*(it.ring?-1.3:1); it.bad=Math.max(0,it.bad-dt*1.5);
         if(it.st==="in") it.a=Math.min(1,it.a+dt*2);
@@ -1081,14 +1087,13 @@ Antworte NUR mit JSON in genau dieser Form:
       fly.pops=fly.pops.filter(p=>(p.t+=dt)<1);
       drawRing(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
     function finishRing(){ fly.playing=false; cancelAnimationFrame(fly.raf); const t=fly.t, n=fly.word.length;
-      const timeStars = t < n*4*(fly.easy?1.5:1) ? 3 : t < n*7*(fly.easy?1.5:1) ? 2 : 1;
-      const stars = Math.max(1, Math.min(timeStars, fly.mistakes===0?3:fly.mistakes<=2?2:1));
+      const stars = calcStars();
       setTimeout(()=>drawRing(ctx,cv,0),0);
       $("#fly-easy").hidden=true; $("#fly-new").hidden=false;
-      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(fly.maxHearts-stars);
       $("#fly-endtxt").textContent="🎠 "+(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gefunden! "+fly.points+" Punkte, "+(fly.mistakes===0?"kein Fehler!":fly.mistakes===1?"1 Fehler.":fly.mistakes+" Fehler.");
       $("#fly-end").hidden=false; sfx("win"); for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      sayChunk("Super! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal mit weniger Fehlern?");
+      sayChunk("Super! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk(starWords(stars));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); } }
   }
   function drawRing(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio, g=fly.geo(), now=performance.now()/1000;
@@ -1127,7 +1132,7 @@ Antworte NUR mit JSON in genau dieser Form:
   function startRace(word, easy){
     word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
     const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=false;
-    Object.assign(fly,{mode:"race", on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:.5, lane:1, carX:1, speed:0, target:easy?.2:.26, structIn:3, clouds:Array.from({length:6},()=>({x:Math.random(),y:Math.random()*.6,s:.6+Math.random()*.8})), playing:false, raf:0,
+    Object.assign(fly,{activeT:0, missRows:0, mode:"race", on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:.5, lane:1, carX:1, speed:0, target:easy?.2:.26, structIn:3, clouds:Array.from({length:6},()=>({x:Math.random(),y:Math.random()*.6,s:.6+Math.random()*.8})), playing:false, raf:0,
       mistakes:0, hearts:5, maxHearts:5, braking:false, easy:!!easy, emoji:WORD_EMOJI[word]||null, chomp:0, remindIn:5, roadOff:0, boost:0, slow:0, stopping:false, scenery:[]});
     const br=$("#fly-brake"); br.hidden=false; br.classList.remove("on");
     const brake=on=>e=>{ e.preventDefault(); e.stopPropagation(); fly.braking=on; br.classList.toggle("on",on); if(on) sfx("tick"); };
@@ -1154,7 +1159,7 @@ Antworte NUR mit JSON in genau dieser Form:
       msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
     function loop(now){ if(!fly.on) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
-      $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      $("#fly-time").textContent=fly.t.toFixed(1)+" s"; trackActive(dt);
       fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=10; if(!sqRunning) sayChunk(cap(fly.word)+"."+nextHint(), 0.85); }
       if(fly.stopping){ fly.speed=Math.max(0,fly.speed-dt*.6); if(fly.speed<=0.001){ drawRace(ctx,cv,dt); gameOver(); return; } }
       else { const want=fly.braking ? Math.min(fly.target,.06) : fly.target; fly.speed+=(want-fly.speed)*Math.min(1,dt*(fly.braking?4:2.5)); }
@@ -1173,7 +1178,7 @@ Antworte NUR mit JSON in genau dieser Form:
       if(!fly.stopping){ fly.spawnIn-=dt*fly.speed; if(fly.spawnIn<=0){ fly.spawnIn=fly.easy?.9:.8;
         const need=fly.word[fly.idx]; const lanes=[0,1,2].sort(()=>Math.random()-.5);
         const n = fly.easy ? 1 : (Math.random()<.65?1:2);
-        const hasNeed = Math.random()<(fly.easy?.8:.6);
+        const hasNeed = fly.missRows>=1 || Math.random()<(fly.easy?.8:.6); fly.missRows = hasNeed?0:fly.missRows+1;
         for(let i=0;i<n;i++){ let ch; if(i===0 && hasNeed) ch=need; else { do{ ch=ALPHA[Math.floor(Math.random()*ALPHA.length)]; }while(ch===need); }
           fly.items.push({ch, lane:lanes[i], d:1, glow:fly.easy && ch===need, hue:Math.floor(Math.random()*360)}); } } }
       for(const it of fly.items) it.d-=fly.speed*dt;
@@ -1192,13 +1197,12 @@ Antworte NUR mit JSON in genau dieser Form:
       fly.items=fly.items.filter(it=>it.d>0.02 && !it.hit); // passed letters vanish at once
       drawRace(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
     function finishRace(){ fly.playing=false; const t=fly.t, n=fly.word.length;
-      const timeStars = t < n*3.5*(fly.easy?1.5:1) ? 3 : t < n*6*(fly.easy?1.5:1) ? 2 : 1;
-      const stars = Math.max(1, Math.min(timeStars, fly.hearts>=5?3:fly.hearts>=3?2:1));
+      const stars = calcStars();
       $("#fly-easy").hidden=true; $("#fly-new").hidden=false;
-      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(fly.maxHearts-stars);
       $("#fly-endtxt").textContent="Ziel! 🏁 "+(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
       $("#fly-end").hidden=false; sfx("win"); for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      stopSpeaking(); sayChunk("Ziel! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk((stars===3?"Drei Sterne, Rennfahrer!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      stopSpeaking(); sayChunk("Ziel! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk(starWords(stars));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); } }
   }
   function drawRace(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio, hz=H*.36;
