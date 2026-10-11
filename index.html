@@ -64,6 +64,10 @@ details[open]{display:grid;gap:8px}
 .sketch-wait{font:400 1.3rem var(--display);color:#6b64a3;animation:float 1.5s ease-in-out infinite}
 .stage.drawing .bubble{max-width:300px}.stage.drawing .kid{height:clamp(200px,44vh,380px)}
 @media (max-width:700px){.sketch{order:0;flex:none;width:100%;max-width:420px}.stage.drawing .kid,.stage.drawing .bubble{display:none}}
+.thinking .kid{animation:ponder 1.4s ease-in-out infinite}
+@keyframes ponder{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(4deg) translateY(-8px)}}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.sketch-wait::after,.bubble.thinking span::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -332,7 +336,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   /* ---------- UI helpers ---------- */
   const app = $("#app");
   function renderHeader(){ $("#stars-n").textContent = stars; $("#kid-name").textContent = cfg.name || "Kind"; }
-  function setBubble(text, thinking){ const b=$("#bubble"); b.textContent=text; b.classList.toggle("thinking",!!thinking); }
+  function setBubble(text, thinking){ const b=$("#bubble"); if(thinking){ const sp=document.createElement("span"); sp.textContent=text; b.replaceChildren(sp); } else b.textContent=text; b.classList.toggle("thinking",!!thinking); }
   function note(t){ $("#note").textContent = t||""; }
   function renderChoices(list){
     const box=$("#choices"); box.replaceChildren();
@@ -369,7 +373,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     sel.value = voices.some(v=>v.name===cfg.voice) ? cfg.voice : (voices[0]?.name||""); }
   if(window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
   function talking(on){ app.classList.toggle("talking", on); }
-  function stopSpeaking(){ try{ speechSynthesis.cancel(); }catch{} try{ player.pause(); }catch{} talking(false); }
+  function stopSpeaking(){ speechGen++; sq=[]; sqRunning=false; const w=sqWaiters; sqWaiters=[]; w.forEach(f=>f()); try{ speechSynthesis.cancel(); }catch{} try{ player.pause(); }catch{} talking(false); }
 
   function speakBrowser(text){ return new Promise(res=>{
     if(!window.speechSynthesis){ res(); return; }
@@ -422,19 +426,27 @@ dialog p{margin:0 0 12px;color:#5a5296}
     }
     return null;
   }
-  async function speak(text){
-    text=clean(text); if(!text) return;
-    stopSpeaking();
-    if(cfg.tts!=="browser"){
-      try{ const blob=await cloudAudio(text);
-        if(blob){ return await new Promise(res=>{ const url=URL.createObjectURL(blob); player.src=url;
-          const rate=1+(+cfg.young||0)/100; player.preservesPitch=false; player.mozPreservesPitch=false; player.webkitPreservesPitch=false; player.playbackRate=rate; player.defaultPlaybackRate=rate;
-          player.onplay=()=>talking(true); player.onended=player.onerror=()=>{ talking(false); URL.revokeObjectURL(url); res(); };
-          player.play().catch(()=>{ talking(false); res(); }); }); }
-      }catch(e){ note("Die Online-Stimme ging nicht ("+e.message+"). Ich nehme die Gerätestimme."); }
-    }
-    return speakBrowser(text);
-  }
+  /* speech queue: sentences are fetched in parallel and played in order */
+  let speechGen=0, sq=[], sqRunning=false, sqWaiters=[];
+  function playBlob(blob){ return new Promise(res=>{ const url=URL.createObjectURL(blob); player.src=url;
+    const rate=1+(+cfg.young||0)/100; player.preservesPitch=false; player.mozPreservesPitch=false; player.webkitPreservesPitch=false; player.playbackRate=rate; player.defaultPlaybackRate=rate;
+    player.onplay=()=>talking(true); player.onended=player.onerror=()=>{ talking(false); URL.revokeObjectURL(url); res(); };
+    player.play().catch(()=>{ talking(false); res(); }); }); }
+  const audioCache=new Map();
+  function getAudio(text){ if(cfg.tts==="browser") return Promise.resolve(null);
+    const key=(cfg.tts||"")+"|"+text; if(audioCache.has(key)) return audioCache.get(key);
+    const p=cloudAudio(text).catch(e=>{ note("Die Online-Stimme ging nicht ("+e.message+"). Ich nehme die Gerätestimme."); return null; });
+    if(audioCache.size>40) audioCache.clear(); audioCache.set(key,p); p.then(b=>{ if(!b) audioCache.delete(key); }); return p; }
+  function sayChunk(text){ text=clean(text); if(!text) return; sq.push({text, audio:getAudio(text)}); if(!sqRunning) runQueue(speechGen); }
+  async function runQueue(gen){ sqRunning=true;
+    while(sq.length && gen===speechGen){ const it=sq.shift(); const blob=await it.audio; if(gen!==speechGen) break;
+      if(blob) await playBlob(blob); else await speakBrowser(it.text); }
+    sqRunning=false; if(!sq.length){ const w=sqWaiters; sqWaiters=[]; w.forEach(f=>f()); } }
+  function speechDone(){ return (!sqRunning && !sq.length) ? Promise.resolve() : new Promise(r=>sqWaiters.push(r)); }
+  function speak(text){ stopSpeaking(); sayChunk(text); return speechDone(); }
+  function splitSentences(t){ return (String(t).match(/[^.!?…]+[.!?…]+["“”»«']?\s*|[^.!?…]+$/g)||[t]).map(x=>x.trim()).filter(Boolean); }
+  const FILLERS=["Hmm, lass mich kurz überlegen.","Oh, gute Frage!","Moment, ich denke nach.","Ui, spannend!","Na klar, Moment!"];
+  function warmFillers(){ if(cfg.tts==="browser") return; FILLERS.forEach(f=>getAudio(f)); }
 
   /* ---------- voice in ---------- */
   const SR = window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null, listening=false, mediaRec=null;
@@ -495,6 +507,7 @@ Regeln:
 - Lobe die Mühe. Bei falscher Antwort: freundlich einen Tipp geben und nochmal raten lassen.
 - Sicherheit: Frage nie nach Adresse, Schule, Fotos, Passwörtern oder Nachnamen. Keine gruseligen, gewalttätigen oder Erwachsenen-Themen. Bei Angst, Schmerzen, Traurigkeit oder ernsten Fragen: lieb reagieren und sagen, dass ${n} das Mama, Papa oder einen Erwachsenen fragen soll.
 - Wenn du etwas nicht weißt, sag es ehrlich.
+- Beginne mit einem kurzen ersten Satz (z. B. "Oh, ein Tiger!"). Nenne nie Links, Dateinamen, Bildquellen, Fotografen oder Webseiten.
 - Ende meist mit einer kleinen Frage oder einem Vorschlag, damit das Gespräch weitergeht.
 ${known}
 Kennenlernen:
@@ -527,6 +540,26 @@ Antworte NUR mit JSON in genau dieser Form:
     const j=await r.json(); return (j.content||[]).map(c=>c.text||"").join("");
   }
   async function ask(){ return parseJSON(await callClaude(rules(), turns, 600)); }
+  // streams the answer; onSay(partialSayText) is called as the "say" field grows
+  async function askStream(onSay){
+    if(mode!=="api"){ const res=await ask(); onSay(String(res?.say||""), true); return res; }
+    if(!cfg.akey){ const e=new Error("nokey"); e.code="nokey"; throw e; }
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
+      body:JSON.stringify({model:cfg.model||"claude-haiku-5-5",max_tokens:600,system:rules(),messages:turns,stream:true})});
+    if(!r.ok || !r.body){ const e=new Error("api "+r.status); e.code=r.status===401?"badkey":r.status===429?"rate_limited":"upstream_error"; throw e; }
+    const rd=r.body.getReader(), dec=new TextDecoder(); let buf="", full="";
+    for(;;){ const {value,done}=await rd.read(); if(done) break; buf+=dec.decode(value,{stream:true});
+      let i; while((i=buf.indexOf("\n"))>=0){ const line=buf.slice(0,i).trim(); buf=buf.slice(i+1);
+        if(!line.startsWith("data:")) continue; let ev; try{ ev=JSON.parse(line.slice(5)); }catch{ continue; }
+        if(ev.type==="content_block_delta" && ev.delta?.text){ full+=ev.delta.text; const p=partialSay(full); if(p) onSay(p.text, p.closed); } } }
+    return parseJSON(full);
+  }
+  function partialSay(raw){ const k=raw.indexOf('"say"'); if(k<0) return null; let j=raw.indexOf('"', raw.indexOf(":",k)+1); if(j<0) return null; j++;
+    let out="", closed=false;
+    for(let i=j;i<raw.length;i++){ const c=raw[i];
+      if(c==="\\"){ if(i+1>=raw.length) break; const n=raw[i+1]; out+= n==="n"?" ":n==="t"?" ":n==="u"? (i+5<raw.length? String.fromCharCode(parseInt(raw.substr(i+2,4),16)) : "") : n; i+= n==="u"?5:1; continue; }
+      if(c==='"'){ closed=true; break; } out+=c; }
+    return {text:out, closed}; }
 
   /* ---------- pictures ---------- */
   async function pixabayImage(q){
@@ -577,7 +610,7 @@ Antworte NUR mit JSON in genau dieser Form:
     const what=String(img.what||img.wiki||"").slice(0,60);
     const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing");
     $("#sketch-title").textContent="Luno zeigt: "+what; $("#sketch-credit").textContent=""; $("#sketch-credit").removeAttribute("href");
-    area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild …"; area.append(wait);
+    area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild"; area.append(wait);
     let found=null;
     const q=img.en||what;
     imgNote="";
@@ -590,12 +623,17 @@ Antworte NUR mit JSON in genau dieser Form:
       ()=>img.wiki_en && wikiExact("en",img.wiki_en),
       ()=>img.wiki && wikiImage(img.wiki),
       ()=>wikiImage(what),
-      ()=>cfg.gkey && cfg.aiimg!==false && geminiImage(what)];
-    for(const src of sources){ if(found) break; try{ found=await src()||null; }catch{} }
+      ()=>null];
+    const aiLazy=()=>cfg.gkey && cfg.aiimg!==false ? geminiImage(what).catch(()=>null) : null;
+    // start all sources at once, take the best (first in list) that finds something
+    const tries=sources.map(f=>{ try{ return Promise.resolve(f()).catch(()=>null); }catch{ return Promise.resolve(null); } });
+    const ai=tries.pop(); // AI image only if nothing else is found
+    for(const t of tries){ const r=await t; if(r){ found=r; break; } }
+    if(!found) found=await aiLazy();
     if(imgNote) note(imgNote);
     if(!found){ wait.textContent="Hmm, ich habe kein gutes Bild gefunden. Frag mich nach etwas anderem!"; return; }
     const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
-    im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.credit; if(found.link) $("#sketch-credit").href=found.link; };
+    im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.link?"Quelle ↗":""; if(found.link) $("#sketch-credit").href=found.link; };
     im.onerror=()=>{ wait.textContent="Das Bild wollte nicht laden. Frag mich nochmal!"; };
     im.src=found.src;
   }
@@ -603,14 +641,24 @@ Antworte NUR mit JSON in genau dieser Form:
 
   async function send(text, hidden){
     if(busy || !text) return;
-    busy=true; note(""); stopSpeaking();
+    busy=true; note(""); stopSpeaking(); warmFillers();
     turns.push({role:"user", content:text}); if(turns.length>16) turns=turns.slice(-16); while(turns.length && turns[0].role!=="user") turns.shift();
-    setBubble(hidden ? "Moment, ich hole das Spiel …" : "Hmm, lass mich überlegen …", true);
+    setBubble(hidden ? "Moment, ich hole das Spiel" : "Ich überlege", true); app.classList.add("thinking");
     $("#choices").replaceChildren();
-    let said=null;
+    let said=null, spokenUpTo=0, gotFirst=false;
+    const filler=setTimeout(()=>{ if(!gotFirst) sayChunk(FILLERS[Math.floor(Math.random()*FILLERS.length)]); }, 900);
+    const onSay=(t, closed)=>{
+      t=cleanSay(t); if(!t) return;
+      if(!gotFirst){ gotFirst=true; app.classList.remove("thinking"); }
+      setBubble(t);
+      const parts=splitSentences(t); const complete = closed ? parts.length : Math.max(0, parts.length-1);
+      for(let i=spokenUpTo;i<complete;i++) sayChunk(parts[i]);
+      spokenUpTo=Math.max(spokenUpTo,complete);
+    };
     try{
-      const res = await ask();
-      said = String(res?.say||"Hoppla, das habe ich nicht verstanden. Sagst du es nochmal?");
+      const res = await askStream(onSay);
+      said = cleanSay(String(res?.say||"")) || "Hoppla, das habe ich nicht verstanden. Sagst du es nochmal?";
+      onSay(said, true);
       turns.push({role:"assistant", content:JSON.stringify(res)});
       setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
       if(res?.star===true) celebrate();
@@ -620,7 +668,7 @@ Antworte NUR mit JSON in genau dieser Form:
       if(!cfg.name && res?.kid_name){ cfg.name=String(res.kid_name).trim().slice(0,20); store.set("cfg",cfg); renderHeader(); }
       if(res?.kid_age && +res.kid_age>=2 && +res.kid_age<=14){ cfg.age=Math.round(+res.kid_age); store.set("cfg",cfg); }
     }catch(e){
-      turns.pop();
+      turns.pop(); stopSpeaking();
       const msg = {nokey:"Ich brauche noch meinen Funk zur Erde. Ein Erwachsener kann ihn im Elternbereich einschalten.",
         badkey:"Der Schlüssel im Elternbereich stimmt nicht.",
         badcode:"Mein Funk-Code stimmt nicht. Bitte den Familien-Link nochmal öffnen.",
@@ -633,9 +681,11 @@ Antworte NUR mit JSON in genau dieser Form:
         note("Ohne gültigen Anthropic API-Schlüssel kann Luno nicht antworten. Bitte im Elternbereich eintragen.");
         if(!keyPromptShown){ keyPromptShown=true; $("#btn-parents").click(); setTimeout(()=>$("#p-akey").focus(),50); }
       }
-    }finally{ busy=false; }
-    if(said){ await speak(said); if(cfg.auto && mode!=="claude" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
+    }finally{ busy=false; clearTimeout(filler); app.classList.remove("thinking"); }
+    if(said){ await speechDone(); if(cfg.auto && mode!=="claude" && !listening && !busy && !$("#dlg-parents").open && !$("#dlg-games").open) listen(); }
   }
+  // remove links, file names and source notes before showing/speaking
+  function cleanSay(t){ return String(t).replace(/https?:\/\/\S+/g,"").replace(/\b\S+\.(jpe?g|png|svg|gif|webp)\b/gi,"").replace(/\b(Quelle|Bild|Foto)\s*:\s*[^.!?]*/gi,"").replace(/\s{2,}/g," ").trim(); }
   function startGame(key){ $("#dlg-games").close(); send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
