@@ -433,9 +433,12 @@ dialog p{margin:0 0 12px;color:#5a5296}
     player.onplay=()=>talking(true); player.onended=player.onerror=()=>{ talking(false); URL.revokeObjectURL(url); res(); };
     player.play().catch(()=>{ talking(false); res(); }); }); }
   const audioCache=new Map();
-  function getAudio(text){ if(cfg.tts==="browser") return Promise.resolve(null);
+  let ttsPauseUntil=0;
+  function getAudio(text){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
     const key=(cfg.tts||"")+"|"+text; if(audioCache.has(key)) return audioCache.get(key);
-    const p=cloudAudio(text).catch(e=>{ note("Die Online-Stimme ging nicht ("+e.message+"). Ich nehme die Gerätestimme."); return null; });
+    const p=cloudAudio(text).catch(e=>{ const m=String(e.message||"");
+      if(/429/.test(m)){ ttsPauseUntil=Date.now()+60000; note("Google-Stimme: Gratis-Limit kurz erreicht, Luno spricht 1 Minute mit der Gerätestimme. Mit eingerichteter Abrechnung in AI Studio passiert das nicht."); }
+      else note("Die Online-Stimme ging nicht ("+m+"). Ich nehme die Gerätestimme."); return null; });
     if(audioCache.size>40) audioCache.clear(); audioCache.set(key,p); p.then(b=>{ if(!b) audioCache.delete(key); }); return p; }
   function sayChunk(text){ text=clean(text); if(!text) return; sq.push({text, audio:getAudio(text)}); if(!sqRunning) runQueue(speechGen); }
   async function runQueue(gen){ sqRunning=true;
@@ -445,8 +448,14 @@ dialog p{margin:0 0 12px;color:#5a5296}
   function speechDone(){ return (!sqRunning && !sq.length) ? Promise.resolve() : new Promise(r=>sqWaiters.push(r)); }
   function speak(text){ stopSpeaking(); sayChunk(text); return speechDone(); }
   function splitSentences(t){ return (String(t).match(/[^.!?…]+[.!?…]+["“”»«']?\s*|[^.!?…]+$/g)||[t]).map(x=>x.trim()).filter(Boolean); }
-  const FILLERS=["Hmm, lass mich kurz überlegen.","Oh, gute Frage!","Moment, ich denke nach.","Ui, spannend!","Na klar, Moment!"];
-  function warmFillers(){ if(cfg.tts==="browser") return; FILLERS.forEach(f=>getAudio(f)); }
+  const FILLER="Hmm, lass mich kurz überlegen.";
+  let fillerBlob=null;
+  function blobToB64(b){ return new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(",")[1]); fr.onerror=()=>r(null); fr.readAsDataURL(b); }); }
+  async function warmFillers(){ if(cfg.tts==="browser" || fillerBlob) return;
+    const key="filler."+cfg.tts+"."+(cfg.young||0); const saved=store.get(key,null);
+    if(saved){ try{ const bin=atob(saved), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); fillerBlob=new Blob([u],{type:"audio/wav"}); return; }catch{} }
+    const b=await getAudio(FILLER); if(b){ fillerBlob=b; const b64=await blobToB64(b); if(b64 && b64.length<400000) store.set(key,b64); } }
+  function playFiller(){ if(fillerBlob){ sq.push({text:FILLER, audio:Promise.resolve(fillerBlob)}); if(!sqRunning) runQueue(speechGen); } else if(cfg.tts==="browser") sayChunk(FILLER); }
 
   /* ---------- voice in ---------- */
   const SR = window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null, listening=false, mediaRec=null;
@@ -646,14 +655,14 @@ Antworte NUR mit JSON in genau dieser Form:
     setBubble(hidden ? "Moment, ich hole das Spiel" : "Ich überlege", true); app.classList.add("thinking");
     $("#choices").replaceChildren();
     let said=null, spokenUpTo=0, gotFirst=false;
-    const filler=setTimeout(()=>{ if(!gotFirst) sayChunk(FILLERS[Math.floor(Math.random()*FILLERS.length)]); }, 900);
+    const filler=setTimeout(()=>{ if(!gotFirst) playFiller(); }, 1200);
     const onSay=(t, closed)=>{
       t=cleanSay(t); if(!t) return;
       if(!gotFirst){ gotFirst=true; app.classList.remove("thinking"); }
       setBubble(t);
-      const parts=splitSentences(t); const complete = closed ? parts.length : Math.max(0, parts.length-1);
-      for(let i=spokenUpTo;i<complete;i++) sayChunk(parts[i]);
-      spokenUpTo=Math.max(spokenUpTo,complete);
+      const parts=splitSentences(t);
+      if(spokenUpTo===0 && (parts.length>1 || closed)){ sayChunk(parts[0]); spokenUpTo=1; }
+      if(closed && spokenUpTo<parts.length){ sayChunk(parts.slice(spokenUpTo).join(" ")); spokenUpTo=parts.length; }
     };
     try{
       const res = await askStream(onSay);
