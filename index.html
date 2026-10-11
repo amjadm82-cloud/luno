@@ -68,6 +68,12 @@ details[open]{display:grid;gap:8px}
 @keyframes ponder{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(4deg) translateY(-8px)}}
 @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 .sketch-wait::after,.bubble.thinking span::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite}
+.fields{display:grid;gap:10px;margin-top:6px}
+.fields .hbtn.ghost,#p-addkid{color:var(--cardInk);border-color:#d9d0ff;background:#fff}
+.field{display:grid;gap:4px;min-width:0}
+.field label{font-weight:800}
+.field input,.field select{width:100%;box-sizing:border-box}
+.field input[type=range]{padding:0}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -248,51 +254,68 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <details id="p-tech"><summary>Technik (nur einmal einrichten)</summary>
     <label class="check"><input type="checkbox" id="p-auto" checked> Nach Lunos Antwort automatisch zuhören</label>
 
-    <div id="api-box">
-      <h3>KI (Claude)</h3>
-      <label for="p-akey">Anthropic API-Schlüssel</label>
-      <input id="p-akey" type="password" placeholder="sk-ant-…" autocomplete="off">
-      <div class="hint">Von console.anthropic.com → API Keys.</div>
-      <label for="p-model">Modell</label>
-      <select id="p-model"><option value="claude-haiku-5-5">Schnell (Haiku)</option><option value="claude-sonnet-5-5">Klüger (Sonnet)</option></select>
+    <div id="api-box" class="fields">
+      <h3>1. KI-Antworten (Claude)</h3>
+      <div class="field"><label for="p-akey">Anthropic API-Schlüssel</label>
+        <input id="p-akey" type="password" placeholder="sk-ant-api03-…" autocomplete="off">
+        <div class="hint">console.anthropic.com → API Keys → Create key. Beginnt mit „sk-ant-“.</div></div>
+      <div class="field"><label for="p-model">Modell</label>
+        <select id="p-model"><option value="claude-haiku-5-5">Schnell (Haiku) – empfohlen</option><option value="claude-sonnet-5-5">Klüger (Sonnet)</option></select></div>
     </div>
 
-    <h3>Stimme</h3>
-    <label for="p-tts">Stimme von</label>
-    <select id="p-tts">
-      <option value="chirp">Google Chirp 3 HD – Leda (empfohlen, 1 Mio. Zeichen/Monat gratis)</option>
-      <option value="gemini">Google Gemini – Leda (kindlicher, kleines Gratis-Limit)</option>
-      <option value="browser">Gerät (kostenlos)</option>
-      <option value="openai">OpenAI (natürlich)</option>
-      <option value="eleven">ElevenLabs (sehr natürlich)</option>
-    </select>
-    <div id="tts-browser"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
-      <div class="hint">Tipp für Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
-    <div id="tts-gemini" hidden><label for="p-gkey">Google Gemini API-Schlüssel</label><input id="p-gkey" type="password" placeholder="AIza…" autocomplete="off">
-      <div class="hint">Gratis-Schlüssel von aistudio.google.com/apikey. </div>
-      <label for="p-ckey">Google Stimm-Schlüssel (für Chirp 3 HD)</label><input id="p-ckey" type="password" placeholder="AIza…" autocomplete="off">
-      <div class="hint">Normaler API-Schlüssel aus der Google Cloud Console, beschränkt auf „Cloud Text-to-Speech API“.</div></div>
-    <div id="tts-openai" hidden><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-…" autocomplete="off">
-      <label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div>
-    <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
-      <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
-      <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
-    <h3>Bilder</h3>
-    <label class="check"><input type="checkbox" id="p-aiimg" checked> Wenn keine freie Quelle passt: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild, braucht Abrechnung in AI Studio)</label>
-    <div class="hint">Für viele gute Bilder mindestens einen dieser Gratis-Schlüssel eintragen (am besten Pixabay und Pexels). Ohne Schlüssel kommen nur Wikipedia-Bilder. Jedes Bild wird vor dem Zeigen von Claude auf Kindertauglichkeit geprüft.</div>
-    <label for="p-pkey">Pixabay-Schlüssel</label>
-    <input id="p-pkey" type="password" autocomplete="off" placeholder="pixabay.com/api/docs">
-    <label for="p-ukey">Unsplash Access Key</label>
-    <input id="p-ukey" type="password" autocomplete="off" placeholder="unsplash.com/developers">
-    <label for="p-xkey">Pexels-Schlüssel</label>
-    <input id="p-xkey" type="password" autocomplete="off" placeholder="pexels.com/api">
-    <label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
-    <input id="p-young" type="range" min="0" max="15" step="1" value="0">
-    <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div>
-    <h3>Familien-Link</h3>
-    <div class="hint">Erstellt einen Link mit diesen Einstellungen. Auf einem anderen Gerät öffnen, und Luno ist sofort startklar. Den Link nur in der Familie teilen, er enthält die Schlüssel.</div>
-    <button type="button" class="hbtn ghost" id="p-link">Familien-Link erstellen und kopieren</button>
-    <input id="p-linkout" readonly hidden aria-label="Familien-Link">
+    <div class="fields">
+      <h3>2. Stimme</h3>
+      <div class="field"><label for="p-tts">Stimme von</label>
+        <select id="p-tts">
+          <option value="chirp">Google Chirp 3 HD – Leda (empfohlen, 1 Mio. Zeichen/Monat gratis)</option>
+          <option value="gemini">Google Gemini – Leda (kindlicher, kleines Gratis-Limit)</option>
+          <option value="browser">Gerätestimme (kostenlos)</option>
+          <option value="openai">OpenAI</option>
+          <option value="eleven">ElevenLabs</option>
+        </select></div>
+      <div id="tts-browser" class="field"><label for="p-voice">Gerätestimme</label><select id="p-voice"></select>
+        <div class="hint">Tipp Samsung: Einstellungen → Allgemeine Verwaltung → Text-zu-Sprache → „Sprachausgabe von Google“ wählen und die deutsche Stimme in hoher Qualität laden.</div></div>
+      <div id="tts-gemini" hidden>
+        <div class="field"><label for="p-ckey">Google Stimm-Schlüssel „Luno Stimme“ (für Chirp 3 HD)</label>
+          <input id="p-ckey" type="password" placeholder="AIzaSy…" autocomplete="off">
+          <div class="hint">Google Cloud Console → APIs &amp; Services → Credentials → „Luno Stimme“ → Show key. Beginnt meist mit „AIza“.</div></div>
+        <div class="field"><label for="p-gkey">Google Gemini API-Schlüssel (Ersatzstimme)</label>
+          <input id="p-gkey" type="password" placeholder="AQ.Ab8…" autocomplete="off">
+          <div class="hint">aistudio.google.com → API-Schlüssel → Schlüssel kopieren. Beginnt mit „AQ.“ oder „AIza“.</div></div>
+      </div>
+      <div id="tts-openai" hidden>
+        <div class="field"><label for="p-okey">OpenAI API-Schlüssel</label><input id="p-okey" type="password" placeholder="sk-proj-…" autocomplete="off"></div>
+        <div class="field"><label for="p-ovoice">Stimme</label><select id="p-ovoice"><option value="coral">Coral (hell, freundlich)</option><option value="nova">Nova (jung)</option><option value="shimmer">Shimmer (sanft)</option><option value="fable">Fable (erzählend)</option><option value="echo">Echo (Junge)</option></select></div></div>
+      <div id="tts-eleven" hidden>
+        <div class="field"><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" placeholder="sk_…" autocomplete="off"></div>
+        <div class="field"><label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="z. B. 21m00Tcm4TlvDq8ikWAM">
+          <div class="hint">In der Voice Library eine deutsche Kinder- oder Erzählerstimme suchen und die Voice-ID kopieren.</div></div></div>
+      <div class="field"><label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
+        <input id="p-young" type="range" min="0" max="15" step="1" value="0">
+        <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div></div>
+    </div>
+
+    <div class="fields">
+      <h3>3. Bilder</h3>
+      <div class="hint">Jedes Bild wird vor dem Zeigen von Claude auf Kindertauglichkeit geprüft. Ohne Schlüssel kommen nur Wikipedia-Bilder.</div>
+      <div class="field"><label for="p-pkey">Pixabay-Schlüssel (empfohlen)</label>
+        <input id="p-pkey" type="password" autocomplete="off" placeholder="12345678-1a2b3c4d5e6f7a8b9c0d1e2f3">
+        <div class="hint">pixabay.com/api/docs (eingeloggt) → Abschnitt „Parameters“ → grün hinterlegt bei „key“.</div></div>
+      <div class="field"><label for="p-ukey">Unsplash Access Key</label>
+        <input id="p-ukey" type="password" autocomplete="off" placeholder="Access Key (nicht Secret Key)">
+        <div class="hint">unsplash.com/oauth/applications → New Application → „Access Key“ kopieren.</div></div>
+      <div class="field"><label for="p-xkey">Pexels-Schlüssel</label>
+        <input id="p-xkey" type="password" autocomplete="off" placeholder="leer lassen">
+        <div class="hint">Pexels vergibt zurzeit keine neuen Schlüssel.</div></div>
+      <label class="check"><input type="checkbox" id="p-aiimg" checked> Wenn kein passendes Bild gefunden wird: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild)</label>
+    </div>
+
+    <div class="fields">
+      <h3>4. Familien-Link</h3>
+      <div class="hint">Erstellt einen Link mit allen Einstellungen. Auf einem anderen Gerät öffnen, und Luno ist sofort startklar. Nur in der Familie teilen, er enthält die Schlüssel.</div>
+      <button type="button" class="hbtn ghost" id="p-link">Familien-Link erstellen und kopieren</button>
+      <input id="p-linkout" readonly hidden aria-label="Familien-Link">
+    </div>
     </details>
     <div class="dlgbtns"><button type="button" class="hbtn ghost" id="p-test">Stimme testen</button><button type="button" class="hbtn ghost" id="p-reset">Neu starten</button><button class="hbtn" id="p-save">Speichern</button></div>
   </form>
