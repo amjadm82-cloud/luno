@@ -55,10 +55,12 @@ details summary{cursor:pointer;font:800 1.05rem var(--body);color:#4b3fa8;margin
 details[open]{display:grid;gap:8px}
 .facts{margin:0;padding-left:20px;color:#2a2160}.facts li{margin:2px 0}.facts:empty::before{content:"Noch nichts. Luno lernt beim Spielen dazu.";color:#6b64a3;font-size:.9rem;margin-left:-20px}
 .sketch{position:relative;order:3;flex:0 1 380px;min-width:0;background:#fffdf6;border-radius:24px;padding:12px;box-shadow:0 10px 0 #0003;z-index:3;color:#2a2160;
-  background-image:linear-gradient(#e9e1ff 1px,transparent 1px),linear-gradient(90deg,#e9e1ff 1px,transparent 1px);background-size:24px 24px}
+  }
 .sketch-head{display:flex;align-items:center;gap:8px;font:800 1.05rem var(--display)}.sketch-head b{flex:1;min-width:0}
 .sketch-head button{background:#2a2160;color:#fff;border-radius:50%;width:36px;height:36px;font-weight:800}
-.sketch-area{aspect-ratio:1;display:grid;place-items:center;max-width:100%}.sketch-area svg{width:100%;height:100%}
+.sketch-area{aspect-ratio:4/3;display:grid;place-items:center;max-width:100%;overflow:hidden;border-radius:16px}.sketch-area .pic{width:100%;height:100%;object-fit:contain;border-radius:16px;animation:pop .4s ease}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.sketch-credit{display:block;font-size:.75rem;color:#6b64a3;text-decoration:none;margin-top:4px;overflow-wrap:anywhere}
 .sketch-wait{font:400 1.3rem var(--display);color:#6b64a3;animation:float 1.5s ease-in-out infinite}
 .stage.drawing .bubble{max-width:300px}.stage.drawing .kid{height:clamp(200px,44vh,380px)}
 @media (max-width:700px){.sketch{order:0;flex:none;width:100%;max-width:420px}.stage.drawing .kid,.stage.drawing .bubble{display:none}}
@@ -190,6 +192,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div class="sketch" id="sketch" hidden>
       <div class="sketch-head"><b id="sketch-title">Luno malt</b><button type="button" id="sketch-close" aria-label="Bild schließen">✕</button></div>
       <div class="sketch-area" id="sketch-area"></div>
+      <a class="sketch-credit" id="sketch-credit" target="_blank" rel="noopener"></a>
     </div>
   </main>
 
@@ -267,6 +270,9 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div id="tts-eleven" hidden><label for="p-ekey">ElevenLabs API-Schlüssel</label><input id="p-ekey" type="password" autocomplete="off">
       <label for="p-evoice">Voice-ID</label><input id="p-evoice" placeholder="Voice-ID aus der ElevenLabs Voice Library">
       <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
+    <label for="p-pkey">Pixabay-Schlüssel (optional, für schönere Bilder)</label>
+    <input id="p-pkey" type="password" autocomplete="off" placeholder="leer = Bilder von Wikipedia">
+    <div class="hint">Gratis auf pixabay.com/api/docs nach der Anmeldung.</div>
     <label for="p-young">Stimme jünger machen: <span id="p-young-v">0</span> %</label>
     <input id="p-young" type="range" min="0" max="15" step="1" value="0">
     <div class="hint">Spielt die Online-Stimme etwas höher ab. 5–10 % klingt meist am natürlichsten.</div>
@@ -293,7 +299,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g,"+").replace(/_/g,"/"))));
   let setupDone = false;
   try{ const m = location.hash.match(/^#setup=([A-Za-z0-9_-]+)$/);
-    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["akey","gkey","okey","name","age","young","tts","model","auto"];
+    if(m){ const d = JSON.parse(b64d(m[1])); const allowed=["pkey","akey","gkey","okey","name","age","young","tts","model","auto"];
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
@@ -490,11 +496,11 @@ Kennenlernen:
 - Nutze, was du schon weißt, für persönliche Rätsel, Geschichten und Spiele (z. B. eine Geschichte mit dem Lieblingstier). Frag nichts, was du schon weißt.
 ${cfg.name ? "" : "- Du kennst den Namen noch nicht: frag zuerst freundlich, wie das Kind heißt und wie alt es ist."}
 Antworte NUR mit JSON in genau dieser Form:
-{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false,"remember":[],"draw":""}
+{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false,"remember":[]}
 - "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
-- "draw": Wenn das Kind möchte, dass du etwas malst oder zeichnest (oder es zum Gespräch super passt), schreib hier kurz, was du malst (z. B. "eine lustige Mücke"), und sag im "say" fröhlich, dass du es jetzt malst. Nur kindgerechte Motive. Sonst weglassen.`;
+- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff, z. B. mosquito"}. Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
   function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
   async function callClaude(system, messages, maxTokens, model){
@@ -516,41 +522,32 @@ Antworte NUR mit JSON in genau dieser Form:
   }
   async function ask(){ return parseJSON(await callClaude(rules(), turns, 600)); }
 
-  /* ---------- drawing ---------- */
-  const SVG_TAGS=new Set(["svg","g","path","circle","ellipse","rect","line","polyline","polygon","defs","lineargradient","radialgradient","stop"]);
-  const SVG_ATTRS=new Set(["d","cx","cy","r","rx","ry","x","y","x1","y1","x2","y2","width","height","points","fill","stroke","stroke-width","stroke-linecap","stroke-linejoin","transform","opacity","fill-opacity","stroke-opacity","viewbox","id","offset","stop-color","stop-opacity","gradientunits","fx","fy"]);
-  function cleanSVG(src){
-    const m=String(src).match(/<svg[\s\S]*<\/svg>/i); if(!m) return null;
-    const doc=new DOMParser().parseFromString(m[0],"image/svg+xml"); const root=doc.documentElement;
-    if(!root || root.nodeName.toLowerCase()!=="svg") return null;
-    const out=document.createElementNS("http://www.w3.org/2000/svg","svg");
-    (function copy(from,to){ for(const n of Array.from(from.childNodes)){ if(n.nodeType!==1) continue; const t=n.nodeName.toLowerCase(); if(!SVG_TAGS.has(t)) continue;
-      const el=document.createElementNS("http://www.w3.org/2000/svg", n.nodeName);
-      for(const a of Array.from(n.attributes)){ const k=a.name.toLowerCase(), v=a.value; if(!SVG_ATTRS.has(k)) continue; if(/url\((?!\s*#)|javascript:|expression/i.test(v)) continue; el.setAttribute(a.name,v); }
-      to.append(el); copy(n,el); } })(root,out);
-    out.setAttribute("viewBox", root.getAttribute("viewBox")||"0 0 300 300"); return out;
+  /* ---------- pictures ---------- */
+  async function pixabayImage(q){
+    const u="https://pixabay.com/api/?key="+encodeURIComponent(cfg.pkey)+"&q="+encodeURIComponent(q)+"&image_type=photo&safesearch=true&per_page=5&orientation=horizontal&order=popular";
+    const r=await fetch(u); if(!r.ok) return null; const j=await r.json(); const h=(j.hits||[])[0];
+    return h ? {src:h.webformatURL, credit:"Bild: Pixabay", link:h.pageURL} : null;
   }
-  function animateDrawing(svg){
-    const shapes=[...svg.querySelectorAll("path,circle,ellipse,rect,line,polyline,polygon")]; const step=Math.min(350, 6000/Math.max(1,shapes.length));
-    shapes.forEach((el,i)=>{ let len=0; try{ len=el.getTotalLength(); }catch{} if(!len) return;
-      const fill=el.getAttribute("fill"); el.style.fillOpacity="0"; el.style.strokeDasharray=len; el.style.strokeDashoffset=len;
-      if(!el.getAttribute("stroke")||el.getAttribute("stroke")==="none"){ el.style.stroke="#2a2160"; el.style.strokeWidth="2"; el.dataset.tmp="1"; }
-      el.style.transition=`stroke-dashoffset ${step*1.6}ms ease ${i*step}ms, fill-opacity 400ms ease ${i*step+step*1.2}ms`;
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.strokeDashoffset="0"; el.style.fillOpacity=""; }));
-      if(el.dataset.tmp) setTimeout(()=>{ el.style.stroke=""; el.style.strokeWidth=""; }, i*step+step*2);
-    });
+  async function wikiImage(term){
+    const u="https://de.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch="+encodeURIComponent(term)+"&prop=pageimages|info&piprop=thumbnail&pithumbsize=900&inprop=url";
+    const r=await fetch(u); if(!r.ok) return null; const j=await r.json();
+    const pages=Object.values(j?.query?.pages||{}).sort((a,b)=>(a.index||0)-(b.index||0));
+    const p=pages.find(p=>p.thumbnail?.source); return p ? {src:p.thumbnail.source, credit:"Bild: Wikipedia – "+p.title, link:p.fullurl} : null;
   }
-  async function drawSketch(what){
-    const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing"); $("#sketch-title").textContent="Luno malt: "+what;
-    area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="✏️ Ich male …"; area.append(wait);
-    const sys=`Du bist ein Illustrator für kleine Kinder. Zeichne eine einfache, fröhliche Cartoon-Skizze als SVG.
-Regeln: viewBox="0 0 300 300". Dicke, runde Konturen (stroke="#2a2160", stroke-width 4 bis 6, stroke-linecap="round", stroke-linejoin="round"). Wenige kräftige, freundliche Farben. Höchstens 40 Formen. Das Motiv groß und mittig, gut erkennbar, mit freundlichem Gesicht, wenn es ein Lebewesen ist. Kein Text, keine Bilder, keine Skripte, keine Filter. Keine echten Personen und keine bekannten Figuren oder Marken: zeichne stattdessen eine eigene, allgemeine Version.
-Antworte NUR mit dem <svg>…</svg>-Code.`;
-    try{
-      const txt=await callClaude(sys,[{role:"user",content:"Zeichne: "+what}],3000,"claude-sonnet-5-5");
-      const svg=cleanSVG(txt); if(!svg) throw new Error("svg");
-      area.replaceChildren(svg); animateDrawing(svg);
-    }catch(e){ area.replaceChildren(); const w=document.createElement("div"); w.className="sketch-wait"; w.textContent="Oh, mein Stift ist abgebrochen. Frag mich nochmal!"; area.append(w); }
+  async function showImage(img){
+    const what=String(img.what||img.wiki||"").slice(0,60);
+    const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing");
+    $("#sketch-title").textContent="Luno zeigt: "+what; $("#sketch-credit").textContent=""; $("#sketch-credit").removeAttribute("href");
+    area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild …"; area.append(wait);
+    let found=null;
+    try{ if(cfg.pkey) found=await pixabayImage(img.en||what); }catch{}
+    try{ if(!found && img.wiki) found=await wikiImage(img.wiki); }catch{}
+    try{ if(!found) found=await wikiImage(what); }catch{}
+    if(!found){ wait.textContent="Hmm, ich habe kein gutes Bild gefunden. Frag mich nach etwas anderem!"; return; }
+    const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
+    im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.credit; if(found.link) $("#sketch-credit").href=found.link; };
+    im.onerror=()=>{ wait.textContent="Das Bild wollte nicht laden. Frag mich nochmal!"; };
+    im.src=found.src;
   }
   $("#sketch-close").onclick=()=>{ $("#sketch").hidden=true; $("#stage").classList.remove("drawing"); };
 
@@ -567,7 +564,7 @@ Antworte NUR mit dem <svg>…</svg>-Code.`;
       turns.push({role:"assistant", content:JSON.stringify(res)});
       setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
       if(res?.star===true) celebrate();
-      if(res?.draw && String(res.draw).trim()) drawSketch(String(res.draw).trim().slice(0,80));
+      if(res?.image && typeof res.image==="object" && (res.image.what||res.image.wiki)) showImage(res.image);
       if(Array.isArray(res?.remember)){ for(const f of res.remember){ const t=String(f).trim().slice(0,80); if(t && !facts.includes(t)) facts.push(t); }
         if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
       if(!cfg.name && res?.kid_name){ cfg.name=String(res.kid_name).trim().slice(0,20); store.set("cfg",cfg); renderHeader(); }
@@ -596,14 +593,14 @@ Antworte NUR mit dem <svg>…</svg>-Code.`;
   function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
   $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
   function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
-    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
+    $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-pkey").value=cfg.pkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
-    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), young:+$("#p-young").value};
+    tts:$("#p-tts").value, voice:$("#p-voice").value, okey:$("#p-okey").value.trim(), ovoice:$("#p-ovoice").value, ekey:$("#p-ekey").value.trim(), evoice:$("#p-evoice").value.trim(), gkey:$("#p-gkey").value.trim(), pkey:$("#p-pkey").value.trim(), young:+$("#p-young").value};
     store.set("cfg",cfg); renderHeader(); }
   $("#p-tts").onchange=showTTS;
   $("#p-link").onclick=async()=>{ readForm();
-    const d={akey:cfg.akey,gkey:cfg.gkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
+    const d={akey:cfg.akey,gkey:cfg.gkey,pkey:cfg.pkey,okey:cfg.okey,name:cfg.name,age:cfg.age,young:cfg.young,tts:cfg.tts,model:cfg.model,auto:cfg.auto};
     const link=location.origin+location.pathname+"#setup="+b64e(JSON.stringify(d));
     const out=$("#p-linkout"); out.hidden=false; out.value=link; out.select();
     try{ await navigator.clipboard.writeText(link); $("#p-link").textContent="Kopiert ✓ – jetzt z. B. per WhatsApp ans Tablet schicken"; }
