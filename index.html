@@ -51,6 +51,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .kid .ears-glow{opacity:0;transition:opacity .2s}
 .happy .kid{animation:hop .5s ease 2}
 @keyframes hop{50%{transform:translateY(-40px) scale(1.04)}}
+details summary{cursor:pointer;font:800 1.05rem var(--body);color:#4b3fa8;margin:16px 0 6px}
+details[open]{display:grid;gap:8px}
+.facts{margin:0;padding-left:20px;color:#2a2160}.facts li{margin:2px 0}.facts:empty::before{content:"Noch nichts. Luno lernt beim Spielen dazu.";color:#6b64a3;font-size:.9rem;margin-left:-20px}
 .starburst{position:absolute;inset:0;pointer-events:none}
 .starburst span{position:absolute;left:35%;top:50%;font-size:2rem;animation:burst 1s ease-out forwards}
 @keyframes burst{to{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}}
@@ -214,10 +217,16 @@ dialog p{margin:0 0 12px;color:#5a5296}
   <p>Alle Angaben bleiben nur auf diesem Gerät gespeichert.</p>
   <form class="form" id="parents-form" method="dialog">
     <h3>Kind</h3>
+    <div class="hint">Mehr braucht es nicht. Alles andere fragt Luno selbst im Gespräch und merkt es sich.</div>
     <label for="p-name">Vorname</label>
     <input id="p-name" maxlength="20" placeholder="z. B. Lina">
     <label for="p-age">Alter</label>
     <select id="p-age"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+    <h3>Was Luno sich gemerkt hat</h3>
+    <ul id="p-facts" class="facts"></ul>
+    <button type="button" class="hbtn ghost" id="p-forget">Alles vergessen</button>
+
+    <details id="p-tech"><summary>Technik (nur einmal einrichten)</summary>
     <label class="check"><input type="checkbox" id="p-auto" checked> Nach Lunos Antwort automatisch zuhören</label>
 
     <div id="api-box">
@@ -253,6 +262,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <div class="hint">Erstellt einen Link mit diesen Einstellungen. Auf einem anderen Gerät öffnen, und Luno ist sofort startklar. Den Link nur in der Familie teilen, er enthält die Schlüssel.</div>
     <button type="button" class="hbtn ghost" id="p-link">Familien-Link erstellen und kopieren</button>
     <input id="p-linkout" readonly hidden aria-label="Familien-Link">
+    </details>
     <div class="dlgbtns"><button type="button" class="hbtn ghost" id="p-test">Stimme testen</button><button type="button" class="hbtn ghost" id="p-reset">Neu starten</button><button class="hbtn" id="p-save">Speichern</button></div>
   </form>
 </dialog>
@@ -275,6 +285,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
       for(const k of allowed) if(d[k]!==undefined) cfg[k]=d[k];
       store.set("cfg", cfg); setupDone = true; history.replaceState(null, "", location.pathname + location.search); } }catch{}
   let stars = store.get("stars", 0);
+  let facts = store.get("facts", []);
   let turns = [];
   let busy = false, mode = null, keyPromptShown = false;
   // Server-Vermittler (hält die Schlüssel geheim). Leer = Schlüssel im Elternbereich eintragen.
@@ -450,6 +461,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
   };
   function rules(){
     const n = cfg.name || "das Kind"; const a = cfg.age || 5;
+    const known = facts.length ? "Das weißt du schon über "+n+":\n- "+facts.join("\n- ") : "Du weißt noch nichts über "+n+".";
     return `Du bist Luno, ein fröhliches Kind und kleiner Fußballstar, das mit seiner Rakete durchs Weltall fliegt und überall Fußball spielt. Du sprichst mit ${n} (${a} Jahre alt), deinem besten Freund auf der Erde.
 Regeln:
 - Sprich NUR natürliches, gesprochenes Hochdeutsch, wie ein Kind in einer deutschen Kinderserie: warm, verspielt, neugierig. Kurze, einfache Sätze für ein ${a}-jähriges Kind. Höchstens 3 Sätze.
@@ -460,8 +472,14 @@ Regeln:
 - Sicherheit: Frage nie nach Adresse, Schule, Fotos, Passwörtern oder Nachnamen. Keine gruseligen, gewalttätigen oder Erwachsenen-Themen. Bei Angst, Schmerzen, Traurigkeit oder ernsten Fragen: lieb reagieren und sagen, dass ${n} das Mama, Papa oder einen Erwachsenen fragen soll.
 - Wenn du etwas nicht weißt, sag es ehrlich.
 - Ende meist mit einer kleinen Frage oder einem Vorschlag, damit das Gespräch weitergeht.
+${known}
+Kennenlernen:
+- Lerne ${n} nach und nach kennen, wie ein neuer Freund: frage ab und zu (nicht in jeder Antwort, immer nur eine Frage) nach Lieblingstier, Lieblingsfarbe, Lieblingsessen, Hobbys, Lieblingsspiel, Lieblingssport, Haustieren oder was ${n} heute erlebt hat.
+- Nutze, was du schon weißt, für persönliche Rätsel, Geschichten und Spiele (z. B. eine Geschichte mit dem Lieblingstier). Frag nichts, was du schon weißt.
+${cfg.name ? "" : "- Du kennst den Namen noch nicht: frag zuerst freundlich, wie das Kind heißt und wie alt es ist."}
 Antworte NUR mit JSON in genau dieser Form:
-{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false}
+{"say":"was Luno sagt","choices":[{"text":"kurze Antwort fürs Kind (max. 4 Wörter)","emoji":"ein Emoji"}],"star":false,"remember":[]}
+- "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.`;
   }
@@ -496,6 +514,10 @@ Antworte NUR mit JSON in genau dieser Form:
       turns.push({role:"assistant", content:JSON.stringify(res)});
       setBubble(said); renderChoices(Array.isArray(res?.choices)?res.choices:[]);
       if(res?.star===true) celebrate();
+      if(Array.isArray(res?.remember)){ for(const f of res.remember){ const t=String(f).trim().slice(0,80); if(t && !facts.includes(t)) facts.push(t); }
+        if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
+      if(!cfg.name && res?.kid_name){ cfg.name=String(res.kid_name).trim().slice(0,20); store.set("cfg",cfg); renderHeader(); }
+      if(res?.kid_age && +res.kid_age>=2 && +res.kid_age<=14){ cfg.age=Math.round(+res.kid_age); store.set("cfg",cfg); }
     }catch(e){
       turns.pop();
       const msg = {nokey:"Ich brauche noch meinen Funk zur Erde. Ein Erwachsener kann ihn im Elternbereich einschalten.",
@@ -517,7 +539,9 @@ Antworte NUR mit JSON in genau dieser Form:
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
-  function fillForm(){ $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
+  function renderFacts(){ const ul=$("#p-facts"); ul.replaceChildren(); for(const f of facts){ const li=document.createElement("li"); li.textContent=f; ul.append(li); } }
+  $("#p-forget").onclick=()=>{ facts=[]; store.set("facts",facts); renderFacts(); };
+  function fillForm(){ renderFacts(); $("#p-tech").open = !(cfg.akey || mode==="proxy"); $("#p-name").value=cfg.name; $("#p-age").value=String(cfg.age); $("#p-auto").checked=!!cfg.auto; $("#p-akey").value=cfg.akey; $("#p-model").value=cfg.model;
     $("#p-tts").value=cfg.tts; $("#p-okey").value=cfg.okey; $("#p-ovoice").value=cfg.ovoice; $("#p-ekey").value=cfg.ekey; $("#p-evoice").value=cfg.evoice; $("#p-gkey").value=cfg.gkey||""; $("#p-young").value=String(cfg.young||0); $("#p-young-v").textContent=cfg.young||0; loadVoices(); showTTS(); }
   $("#p-young").oninput=()=>{ $("#p-young-v").textContent=$("#p-young").value; };
   function readForm(){ cfg={name:$("#p-name").value.trim(), age:+$("#p-age").value, auto:$("#p-auto").checked, akey:$("#p-akey").value.trim(), model:$("#p-model").value,
