@@ -81,6 +81,7 @@ details[open]{display:grid;gap:8px}
 .fly-word span{width:clamp(34px,6vw,54px);height:clamp(42px,7vw,62px);border-radius:12px;display:grid;place-items:center;font:800 clamp(1.4rem,3.6vw,2.2rem) var(--display);background:#ffffff1a;color:#ffffff55;border:3px dashed #ffffff44}
 .fly-word span.got{background:var(--glow);color:#2a2160;border:3px solid #fff;animation:pop .35s ease}
 .fly-word span.next{border-color:var(--mint);color:var(--mint)}
+.fly-pic{font-size:clamp(2rem,6vw,3.2rem);line-height:1;margin-right:6px;display:grid;place-items:center}
 .fly-time{font:800 1.3rem var(--body);color:var(--ink);font-variant-numeric:tabular-nums;background:#ffffff1a;border-radius:999px;padding:6px 14px}
 .fly-x{pointer-events:auto;background:#ffffff22;color:#fff;border-radius:50%;width:44px;height:44px;font-weight:800;font-size:1.1rem}
 .fly-msg{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font:400 clamp(2rem,7vw,4.5rem) var(--display);color:#fff;text-align:center;text-shadow:0 4px 0 #0006;pointer-events:none;white-space:nowrap}
@@ -828,12 +829,19 @@ Antworte NUR mit JSON in genau dieser Form:
     else if(type==="tick"){ tone(660,0,.12,"sine",.2); }
     else if(type==="win"){ [523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.3,"triangle",.22)); }
   }catch{} }
+  const WORD_EMOJI={HUND:"🐶",KATZE:"🐱",MAUS:"🐭",HASE:"🐰",BÄR:"🐻",TIGER:"🐯",LÖWE:"🦁",KUH:"🐮",SCHWEIN:"🐷",PFERD:"🐴",ZEBRA:"🦓",GIRAFFE:"🦒",ELEFANT:"🐘",AFFE:"🐵",FUCHS:"🦊",WOLF:"🐺",PANDA:"🐼",KOALA:"🐨",FROSCH:"🐸",ENTE:"🦆",HUHN:"🐔",VOGEL:"🐦",EULE:"🦉",PINGUIN:"🐧",FISCH:"🐟",HAI:"🦈",DELFIN:"🐬",WAL:"🐳",KRAKE:"🐙",KREBS:"🦀",SCHILDKRÖTE:"🐢",SCHLANGE:"🐍",KROKODIL:"🐊",DINO:"🦖",DINOSAURIER:"🦖",DRACHE:"🐉",BIENE:"🐝",KÄFER:"🐞",MARIENKÄFER:"🐞",MÜCKE:"🦟",FLIEGE:"🪰",AMEISE:"🐜",SCHMETTERLING:"🦋",RAUPE:"🐛",SCHNECKE:"🐌",SPINNE:"🕷️",IGEL:"🦔",EICHHÖRNCHEN:"🐿️",EINHORN:"🦄",APFEL:"🍎",BANANE:"🍌",BIRNE:"🍐",ERDBEERE:"🍓",KIRSCHE:"🍒",TRAUBE:"🍇",ORANGE:"🍊",KAROTTE:"🥕",MÖHRE:"🥕",EIS:"🍦",KUCHEN:"🍰",PIZZA:"🍕",BROT:"🍞",KÄSE:"🧀",EI:"🥚",MILCH:"🥛",BALL:"⚽",FUSSBALL:"⚽",AUTO:"🚗",BUS:"🚌",ZUG:"🚂",FLUGZEUG:"✈️",RAKETE:"🚀",SCHIFF:"🚢",BOOT:"⛵",FAHRRAD:"🚲",HAUS:"🏠",BAUM:"🌳",BLUME:"🌸",SONNE:"☀️",MOND:"🌙",STERN:"⭐",PLANET:"🪐",WOLKE:"☁️",REGEN:"🌧️",SCHNEE:"❄️",HERZ:"❤️",BUCH:"📖",UHR:"⏰",HANDY:"📱",ROBOTER:"🤖",KRONE:"👑",GESCHENK:"🎁",TROMMEL:"🥁",GITARRE:"🎸",VULKAN:"🌋",BERG:"⛰️",MEER:"🌊",FEUER:"🔥",SCHNEEMANN:"⛄",GESPENST:"👻",HUT:"🎩",SCHUH:"👟",BRILLE:"👓",SCHLÜSSEL:"🔑",LAMPE:"💡",TELEFON:"☎️",KAMERA:"📷",TOMATE:"🍅",GURKE:"🥒",ZITRONE:"🍋",WASSERMELONE:"🍉",ANANAS:"🍍"};
+  async function emojiFor(word){ const w=word.toUpperCase(); if(WORD_EMOJI[w]) return WORD_EMOJI[w];
+    const key="emoji."+w; const saved=store.get(key,null); if(saved) return saved;
+    try{ const t=await callClaude("Antworte nur mit genau einem Emoji, sonst nichts.",[{role:"user",content:"Ein passendes Emoji für das deutsche Wort: "+cap(word)}],10,"claude-haiku-5-5");
+      const m=String(t).match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/u); if(m){ store.set(key,m[0]); return m[0]; } }catch{}
+    return null; }
   function startFlight(word){
     word=String(word).toUpperCase().replace(/ß/g,"SS"); stopSpeaking(); if(listening) rec?.stop();
     const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true;
-    Object.assign(fly,{on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:0, y:0.5, x:0.18, targetY:0.5, stars:[], playing:false, raf:0, mistakes:0});
+    Object.assign(fly,{on:true, word, idx:0, items:[], t:0, start:0, last:0, spawnIn:0, y:0.5, x:0.18, targetY:0.5, stars:[], playing:false, raf:0, mistakes:0, emoji:WORD_EMOJI[word]||null, chomp:0, remindIn:5});
+    if(!fly.emoji) emojiFor(word).then(e=>{ if(e && fly.word===word){ fly.emoji=e; const h=$("#fly-pic"); if(h) h.textContent=e; } });
     for(let i=0;i<80;i++) fly.stars.push({x:Math.random(),y:Math.random(),z:Math.random()*0.8+0.2});
-    const box=$("#fly-word"); box.replaceChildren(); [...word].forEach((ch,i)=>{ const sp=document.createElement("span"); sp.textContent=ch; if(i===0) sp.className="next"; box.append(sp); });
+    const box=$("#fly-word"); box.replaceChildren(); const pic=document.createElement("b"); pic.id="fly-pic"; pic.className="fly-pic"; pic.textContent=fly.emoji||"🚀"; box.append(pic); [...word].forEach((ch,i)=>{ const sp=document.createElement("span"); sp.textContent=ch; if(i===0) sp.className="next"; box.append(sp); });
     $("#fly-time").textContent="0.0 s";
     const fit=()=>{ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; }; fit(); fly.fit=fit; addEventListener("resize",fit);
     const pt=e=>{ const t=e.touches?e.touches[0]:e; fly.targetY=Math.min(.92,Math.max(.15,t.clientY/innerHeight)); fly.targetX=Math.min(.6,Math.max(.08,t.clientX/innerWidth)); };
@@ -849,6 +857,8 @@ Antworte NUR mit JSON in genau dieser Form:
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
     function loop(now){ if(!fly.on) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now; fly.t=(now-fly.start)/1000;
       $("#fly-time").textContent=fly.t.toFixed(1)+" s";
+      fly.remindIn-=dt; if(fly.remindIn<=0){ fly.remindIn=5; if(!sqRunning) sayChunk(cap(fly.word)+", "+cap(fly.word)+"!"); }
+      fly.chomp=Math.max(0,fly.chomp-dt*4);
       const speed=.22+fly.idx*.045+fly.t*.002; // gets faster
       fly.y+= (fly.targetY-fly.y)*Math.min(1,dt*8); if(fly.targetX!==undefined) fly.x+=(fly.targetX-fly.x)*Math.min(1,dt*6);
       fly.spawnIn-=dt; if(fly.spawnIn<=0){ fly.spawnIn=Math.max(.45,1.0-fly.idx*.06);
@@ -859,8 +869,8 @@ Antworte NUR mit JSON in genau dieser Form:
       fly.items=fly.items.filter(it=>it.x>-0.1 && !it.hit);
       const ar=cv.width/cv.height;
       for(const it of fly.items){ const dx=(it.x-fly.x)*ar, dy=(it.y+Math.sin(it.wob)*.02)-fly.y; if(Math.hypot(dx,dy)<it.r+.05){ it.hit=true;
-        if(it.ch===fly.word[fly.idx]){ sfx("good"); const sp=$("#fly-word").children; sp[fly.idx].className="got"; fly.idx++;
-          if(sp[fly.idx]) sp[fly.idx].className="next"; sayChunk(it.ch);
+        if(it.ch===fly.word[fly.idx]){ sfx("good"); const sp=$("#fly-word").querySelectorAll("span"); sp[fly.idx].className="got"; fly.idx++;
+          if(sp[fly.idx]) sp[fly.idx].className="next"; sayChunk(it.ch); fly.chomp=1;
           if(fly.idx>=fly.word.length){ finish(); return; } }
         else { sfx("bad"); fly.mistakes++; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); } } }
       drawFly(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
@@ -883,8 +893,15 @@ Antworte NUR mit JSON in genau dieser Form:
     for(const it of fly.items){ const x=it.x*W, y=(it.y+Math.sin(it.wob)*.02)*H, r=it.r*R*1.1;
       ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fillStyle="hsl("+it.hue+",80%,62%)"; ctx.fill(); ctx.lineWidth=4*d; ctx.strokeStyle="#fff"; ctx.stroke();
       ctx.fillStyle="#2a2160"; ctx.font="800 "+Math.round(r*1.1)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(it.ch,x,y+r*.06); }
-    // rocket with Luno
     const x=fly.x*W, y=fly.y*H, s=R*.06;
+    if(fly.emoji){ // the word itself flies and eats the letters
+      ctx.save(); ctx.translate(x,y); const k=1+fly.chomp*.35+Math.sin(performance.now()/180)*.04; ctx.scale(-k,k);
+      ctx.globalAlpha=.25; ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.arc(0,0,s*1.5,0,7); ctx.fill(); ctx.globalAlpha=1;
+      ctx.font=Math.round(s*2.4)+"px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(fly.emoji,0,s*.1);
+      ctx.restore();
+      if(fly.chomp>0){ ctx.globalAlpha=fly.chomp; ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(s*.7)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.fillText("Mampf!",x+s*1.6,y-s*1.4); ctx.globalAlpha=1; }
+      return; }
+    // rocket with Luno
     ctx.save(); ctx.translate(x,y);
     ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.moveTo(-s*1.9,0); ctx.lineTo(-s*1.2,-s*.35); ctx.lineTo(-s*1.2,s*.35); ctx.fill();
     ctx.fillStyle="#ff8a4c"; ctx.beginPath(); ctx.moveTo(-s*2.4+Math.random()*s*.3,0); ctx.lineTo(-s*1.5,-s*.22); ctx.lineTo(-s*1.5,s*.22); ctx.fill();
