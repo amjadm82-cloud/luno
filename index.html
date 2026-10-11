@@ -81,6 +81,7 @@ details[open]{display:grid;gap:8px}
 .fly-word span{width:clamp(34px,6vw,54px);height:clamp(42px,7vw,62px);border-radius:12px;display:grid;place-items:center;font:800 clamp(1.4rem,3.6vw,2.2rem) var(--display);background:#141a3dcc;color:#ffffff88;border:3px dashed #ffffff66}
 .fly-word span.got{background:var(--glow);color:#2a2160;border:3px solid #fff;animation:pop .35s ease}
 .fly-word span.next{border-color:var(--mint);color:var(--mint)}
+.fly-word span.say{transform:scale(1.22);box-shadow:0 0 0 4px #fff,0 0 18px var(--glow);color:#fff;transition:transform .15s}
 .fly-pic{font-size:clamp(2rem,6vw,3.2rem);line-height:1;margin-right:6px;display:grid;place-items:center}
 .fly-hearts{font-size:clamp(1.4rem,3.6vw,2rem);letter-spacing:.05em;white-space:nowrap}
 .fly-hearts .lost{filter:grayscale(1);opacity:.35}
@@ -548,7 +549,8 @@ dialog p{margin:0 0 12px;color:#5a5296}
   function sayChunk(text, rate){ text=clean(text); if(!text) return; sq.push({text, audio:getAudio(text, rate)}); if(!sqRunning) runQueue(speechGen); }
   async function runQueue(gen){ sqRunning=true;
     while(sq.length && gen===speechGen){ const it=sq.shift(); const blob=await it.audio; if(gen!==speechGen) break;
-      if(blob) await playBlob(blob); else await speakBrowser(it.text); }
+      try{ it.onstart?.(); }catch{} if(blob) await playBlob(blob); else await speakBrowser(it.text); try{ it.onend?.(); }catch{}
+      if(it.pause && gen===speechGen) await new Promise(r=>setTimeout(r,it.pause)); }
     sqRunning=false; if(!sq.length){ const w=sqWaiters; sqWaiters=[]; w.forEach(f=>f()); } }
   function speechDone(){ return (!sqRunning && !sq.length) ? Promise.resolve() : new Promise(r=>sqWaiters.push(r)); }
   function speak(text){ stopSpeaking(); sayChunk(text); return speechDone(); }
@@ -867,9 +869,8 @@ Antworte NUR mit JSON in genau dieser Form:
     el.ontouchmove=e=>{ e.preventDefault(); pt(e); };
     fly.key=e=>{ if(e.key==="ArrowUp") fly.targetY=Math.max(.15,fly.targetY-.08); if(e.key==="ArrowDown") fly.targetY=Math.min(.92,fly.targetY+.08); }; addEventListener("keydown",fly.key);
     const msg=$("#fly-msg");
-    const spelled=spellDE(word);
     msg.textContent=word; drawFly(ctx,cv,0);
-    sayChunk("Unser Wort ist: "+cap(word)+"."); sayChunk(spelled+".", 0.8); sayChunk(cap(word)+"! Sammle die Buchstaben in der richtigen Reihenfolge."+(easy?" Diesmal sind die richtigen Buchstaben groß und leuchten.":" Pass auf, du hast drei Herzen.")+" Los geht's!");
+    sayChunk("Unser Wort ist: "+cap(word)+"."); sayLetters(word); sayChunk(cap(word)+"! Sammle die Buchstaben in der richtigen Reihenfolge."+(easy?" Diesmal sind die richtigen Buchstaben groß und leuchten.":" Pass auf, du hast drei Herzen.")+" Los geht's!");
     Promise.race([speechDone(), new Promise(r=>setTimeout(r,14000))]).then(async()=>{ if(!fly.on) return; for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,700)); if(!fly.on) return; }
       msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600);
       fly.playing=true; fly.start=performance.now(); fly.last=fly.start; fly.raf=requestAnimationFrame(loop); });
@@ -895,9 +896,9 @@ Antworte NUR mit JSON in genau dieser Form:
           if(fly.hearts>0){ fly.hearts--; renderHearts(true); }
           else { gameOver(); return; }
           const left=fly.hearts===0?"Letzte Chance!":fly.hearts===1?"Noch 1 Herz!":"Noch "+fly.hearts+" Herzen!";
-          oops.textContent="✗ Das war "+(DE_LETTER[it.ch]||it.ch)+". Wir brauchen "+(DE_LETTER[need]||need)+"! "+left; oops.hidden=false;
+          oops.textContent="✗ Das war "+it.ch+". Wir brauchen "+need+"! "+left; oops.hidden=false;
           clearTimeout(fly.oopsT); fly.oopsT=setTimeout(()=>{ oops.hidden=true; },1800);
-          stopSpeaking(); sayChunk("Hoppla! Das war "+(DE_LETTER[it.ch]||it.ch)+". Wir brauchen ein "+(DE_LETTER[need]||need)+"."); } } }
+          stopSpeaking(); sayChunk("Hoppla! Das war ein "+Lsay(it.ch)+". Wir brauchen ein "+Lwie(need)+".", 0.85); } } }
       drawFly(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
     function finish(){ fly.playing=false; const t=fly.t, n=fly.word.length;
       const timeStars = t < n*3.5*(fly.easy?1.5:1) ? 3 : t < n*6*(fly.easy?1.5:1) ? 2 : 1;
@@ -907,20 +908,33 @@ Antworte NUR mit JSON in genau dieser Form:
       $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
       $("#fly-end").hidden=false; sfx("win");
       for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+": "+spellDE(fly.word)+". "+(stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      stopSpeaking(); sayChunk(["Sternenstaub!","Raketenstark!","Super gemacht!"][Math.floor(Math.random()*3)]+" "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk((stars===3?"Drei Sterne, Wahnsinn!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); }
     }
   }
-  const DE_LETTER={A:"A",B:"Be",C:"Ze",D:"De",E:"E",F:"Eff",G:"Ge",H:"Ha",I:"I",J:"Jott",K:"Ka",L:"Ell",M:"Emm",N:"Enn",O:"O",P:"Pe",Q:"Ku",R:"Err",S:"Ess",T:"Te",U:"U",V:"Vau",W:"We",X:"Ix",Y:"Üpsilon",Z:"Zett",Ä:"Ä",Ö:"Ö",Ü:"Ü"};
-  function spellDE(word){ return [...String(word).toUpperCase()].map(c=>DE_LETTER[c]||c).join(", "); }
+  /* Buchstaben deutlich sprechen: Lautschrift für die Stimme + Merkwort, jeder Buchstabe als eigene langsame Aufnahme */
+  const DE_LETTER={A:"Ah",B:"Beh",C:"Zeh",D:"Deh",E:"Eh",F:"Eff",G:"Geh",H:"Hah",I:"Ih",J:"Jott",K:"Kah",L:"Ell",M:"Emm",N:"Enn",O:"Oh",P:"Peh",Q:"Kuh",R:"Err",S:"Ess",T:"Teh",U:"Uh",V:"Fau",W:"Weh",X:"Iks",Y:"Ypsilon",Z:"Zett",Ä:"Äh",Ö:"Öh",Ü:"Üh"};
+  const DE_WIE={A:"Affe",B:"Ball",C:"Clown",D:"Dino",E:"Esel",F:"Fisch",G:"Giraffe",H:"Hund",I:"Igel",J:"Jojo",K:"Katze",L:"Löwe",M:"Maus",N:"Nase",O:"Oma",P:"Pinguin",Q:"Qualle",R:"Rakete",S:"Sonne",T:"Tiger",U:"Uhu",V:"Vogel",W:"Wal",X:"Xylofon",Y:"Yak",Z:"Zebra",Ä:"Äpfel",Ö:"Öl",Ü:"Überraschung"};
+  const Lsay=c=>DE_LETTER[c]||c, Lwie=c=>Lsay(c)+(DE_WIE[c]?", wie "+DE_WIE[c]:"");
+  function spellDE(word){ return [...String(word).toUpperCase()].map(Lsay).join(". "); }
+  const letterMem=new Map();
+  function letterAudio(c){ if(cfg.tts==="browser" || Date.now()<ttsPauseUntil) return Promise.resolve(null);
+    const key="ltr2."+(cfg.tts||"")+"."+c; if(letterMem.has(key)) return letterMem.get(key);
+    const saved=store.get(key,null);
+    if(saved){ try{ const bin=atob(saved.d), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); const p=Promise.resolve(new Blob([u],{type:saved.t})); letterMem.set(key,p); return p; }catch{} }
+    const p=getAudio(Lsay(c)+".", 0.75).then(async b=>{ if(b){ const d=await blobToB64(b); if(d && d.length<60000) store.set(key,{d,t:b.type||"audio/mpeg"}); } else letterMem.delete(key); return b; });
+    letterMem.set(key,p); return p; }
+  function hlLetter(i,on){ const sp=$("#fly-word")?.querySelectorAll("span"); if(sp&&sp[i]) sp[i].classList.toggle("say",on); }
+  function sayLetters(word){ [...String(word).toUpperCase()].forEach((c,i)=>{ sq.push({text:Lsay(c)+".", audio:letterAudio(c), pause:280, onstart:()=>hlLetter(i,true), onend:()=>hlLetter(i,false)}); });
+    if(!sqRunning) runQueue(speechGen); }
   function renderHearts(pop){ const h=$("#fly-hearts"); if(!h) return; h.replaceChildren();
     for(let i=0;i<(fly.maxHearts||3);i++){ const sp=document.createElement("span"); sp.textContent="❤️"; if(i>=fly.hearts) sp.className="lost"+(pop && i===fly.hearts?" pop":""); h.append(sp); } }
   function gameOver(){ fly.playing=false; cancelAnimationFrame(fly.raf); sfx("bad");
     $("#fly-oops").hidden=true; $("#fly-stars").textContent="💔";
     $("#fly-endtxt").textContent=(fly.mode==="race"?"Oh nein, das Auto ist stehen geblieben!":"Oh nein, keine Herzen mehr!")+" Probier es nochmal. Willst du es diesmal leichter? Dann sind die richtigen Buchstaben groß und langsamer.";
     $("#fly-easy").hidden=false; $("#fly-new").hidden=true; $("#fly-end").hidden=false;
-    stopSpeaking(); sayChunk((fly.mode==="race"?"Oh nein, das Auto ist stehen geblieben!":"Oh nein, keine Herzen mehr!")+" Unser Wort war "+cap(fly.word)+": "+spellDE(fly.word)+". Probier es nochmal! Du kannst es auch leichter machen.", 0.9); }
-  function nextHint(){ const nx=fly.word[fly.idx]; return nx ? " Jetzt suchst du das "+(DE_LETTER[nx]||nx)+"." : ""; }
+    stopSpeaking(); sayChunk((fly.mode==="race"?"Oh nein, das Auto ist stehen geblieben!":"Oh nein, keine Herzen mehr!")+" Unser Wort war "+cap(fly.word)+".", 0.9); sayLetters(fly.word); sayChunk("Probier es nochmal! Du kannst es auch leichter machen.", 0.9); }
+  function nextHint(){ const nx=fly.word[fly.idx]; return nx ? " Jetzt suchst du das "+Lwie(nx)+"." : ""; }
   function cap(w){ w=String(w).toLowerCase(); return w.charAt(0).toUpperCase()+w.slice(1); }
   function drawFly(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio;
     ctx.fillStyle="#0b1030"; ctx.fillRect(0,0,W,H);
@@ -981,8 +995,8 @@ Antworte NUR mit JSON in genau dieser Form:
     fly.key=e=>{ if(e.key==="ArrowLeft") steer(-1); if(e.key==="ArrowRight") steer(1); if(e.key==="ArrowDown"||e.key===" "){ fly.braking=true; br.classList.add("on"); } }; addEventListener("keydown",fly.key);
     fly.keyUp=e=>{ if(e.key==="ArrowDown"||e.key===" "){ fly.braking=false; br.classList.remove("on"); } }; addEventListener("keyup",fly.keyUp);
     const msg=$("#fly-msg"); msg.textContent=word; drawRace(ctx,cv,0);
-    sayChunk("Unser Wort ist: "+cap(word)+"."); sayChunk(spellDE(word)+".", 0.8);
-    sayChunk("Zuerst suchst du das "+(DE_LETTER[word[0]]||word[0])+".");
+    sayChunk("Unser Wort ist: "+cap(word)+"."); sayLetters(word);
+    sayChunk("Zuerst suchst du das "+Lwie(word[0])+".");
     sayChunk("Tippe links oder rechts, um die Spur zu wechseln. Fahr in die richtigen Buchstaben! Richtige machen dich schneller, falsche bremsen dich."+" Mit dem roten Knopf kannst du bremsen."+(easy?" Diesmal leuchten die richtigen Buchstaben.":" Nach fünf Fehlern bleibt das Auto stehen.")+" Los geht's!");
     Promise.race([speechDone(), new Promise(r=>setTimeout(r,16000))]).then(async()=>{ if(!fly.on) return;
       for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,700)); if(!fly.on) return; }
@@ -1021,8 +1035,8 @@ Antworte NUR mit JSON in genau dieser Form:
           el.classList.remove("shake","hurt"); void el.offsetWidth; el.classList.add("shake","hurt");
           const need=fly.word[fly.idx], oops=$("#fly-oops"); fly.hearts=Math.max(0,fly.hearts-1); renderHearts(true);
           if(fly.hearts===0){ oops.textContent="✗ Fünf Fehler! Das Auto bleibt stehen."; oops.hidden=false; fly.stopping=true; stopSpeaking(); }
-          else { oops.textContent="✗ Das war "+(DE_LETTER[it.ch]||it.ch)+". Wir brauchen "+(DE_LETTER[need]||need)+"! "+(fly.hearts===1?"Noch 1 Herz!":"Noch "+fly.hearts+" Herzen!"); oops.hidden=false;
-            stopSpeaking(); sayChunk("Bremse! Das war "+(DE_LETTER[it.ch]||it.ch)+". Wir brauchen ein "+(DE_LETTER[need]||need)+"."); }
+          else { oops.textContent="✗ Das war "+it.ch+". Wir brauchen "+need+"! "+(fly.hearts===1?"Noch 1 Herz!":"Noch "+fly.hearts+" Herzen!"); oops.hidden=false;
+            stopSpeaking(); sayChunk("Bremse! Das war ein "+Lsay(it.ch)+". Wir brauchen ein "+Lwie(need)+".", 0.85); }
           clearTimeout(fly.oopsT); fly.oopsT=setTimeout(()=>{ oops.hidden=true; },1800); } } }
       fly.items=fly.items.filter(it=>it.d>0.02 && !it.hit); // passed letters vanish at once
       drawRace(ctx,cv,dt); fly.raf=requestAnimationFrame(loop); }
@@ -1033,7 +1047,7 @@ Antworte NUR mit JSON in genau dieser Form:
       $("#fly-stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
       $("#fly-endtxt").textContent="Ziel! 🏁 "+(cfg.name?cfg.name+", du":"Du")+" hast "+cap(fly.word)+" in "+t.toFixed(1)+" Sekunden gesammelt!";
       $("#fly-end").hidden=false; sfx("win"); for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*350);
-      stopSpeaking(); sayChunk("Ziel! "+cap(fly.word)+": "+spellDE(fly.word)+". "+(stars===3?"Drei Sterne, Rennfahrer!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
+      stopSpeaking(); sayChunk("Ziel! "+cap(fly.word)+"!"); sayLetters(fly.word); sayChunk((stars===3?"Drei Sterne, Rennfahrer!":stars===2?"Zwei Sterne! Schaffst du drei?":"Ein Stern! Nochmal schneller?"));
       if(!facts.includes("kann "+cap(fly.word)+" buchstabieren")){ facts.push("kann "+cap(fly.word)+" buchstabieren"); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); } }
   }
   function drawRace(ctx,cv,dt){ const W=cv.width, H=cv.height, d=devicePixelRatio, hz=H*.36;
