@@ -505,7 +505,7 @@ Antworte NUR mit JSON in genau dieser Form:
 - "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
-- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff, z. B. mosquito"}. Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
+- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff, z. B. mosquito","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Mosquito"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
   function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
   async function callClaude(system, messages, maxTokens, model){
@@ -548,8 +548,13 @@ Antworte NUR mit JSON in genau dieser Form:
     if(!r.ok) return null; const h=((await r.json()).results||[]).find(x=>x.url);
     return h ? {src:h.thumbnail||h.url, credit:"Bild: "+(h.creator||"Openverse")+" ("+String(h.license||"cc").toUpperCase()+")", link:h.foreign_landing_url} : null;
   }
+  async function wikiExact(lang,title){
+    const u="https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url&titles="+encodeURIComponent(title);
+    const r=await fetch(u); if(!r.ok) return null; const p=Object.values((await r.json())?.query?.pages||{})[0];
+    return p?.thumbnail?.source ? {src:p.thumbnail.source, credit:"Bild: Wikipedia – "+p.title, link:p.fullurl} : null;
+  }
   async function wikiImage(term){
-    const u="https://de.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch="+encodeURIComponent(term)+"&prop=pageimages|info&piprop=thumbnail&pithumbsize=900&inprop=url";
+    const u="https://de.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch="+encodeURIComponent(term)+"&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url";
     const r=await fetch(u); if(!r.ok) return null; const j=await r.json();
     const pages=Object.values(j?.query?.pages||{}).sort((a,b)=>(a.index||0)-(b.index||0));
     const p=pages.find(p=>p.thumbnail?.source); return p ? {src:p.thumbnail.source, credit:"Bild: Wikipedia – "+p.title, link:p.fullurl} : null;
@@ -565,6 +570,8 @@ Antworte NUR mit JSON in genau dieser Form:
       ()=>cfg.pkey && pixabayImage(q),
       ()=>cfg.ukey && unsplashImage(q),
       ()=>cfg.xkey && pexelsImage(q),
+      ()=>img.wiki && wikiExact("de",img.wiki),
+      ()=>img.wiki_en && wikiExact("en",img.wiki_en),
       ()=>img.wiki && wikiImage(img.wiki),
       ()=>wikiImage(what),
       ()=>openverseImage(q)];
