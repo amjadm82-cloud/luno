@@ -279,7 +279,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
       <div class="hint">In der Voice Library nach „German child“ oder „German kids storyteller“ suchen und die Voice-ID kopieren.</div></div>
     <h3>Bilder</h3>
     <label class="check"><input type="checkbox" id="p-aiimg" checked> Wenn keine freie Quelle passt: Bild mit Google-KI erstellen (ca. 3 Rappen pro Bild, braucht Abrechnung in AI Studio)</label>
-    <div class="hint">Ohne Schlüssel kommen die Bilder von Wikipedia und Openverse. Mit einem Schlüssel nimmt Luno zuerst diese Quelle.</div>
+    <div class="hint">Für viele gute Bilder mindestens einen dieser Gratis-Schlüssel eintragen (am besten Pixabay und Pexels). Ohne Schlüssel kommen nur Wikipedia-Bilder. Jedes Bild wird vor dem Zeigen von Claude auf Kindertauglichkeit geprüft.</div>
     <label for="p-pkey">Pixabay-Schlüssel</label>
     <input id="p-pkey" type="password" autocomplete="off" placeholder="pixabay.com/api/docs">
     <label for="p-ukey">Unsplash Access Key</label>
@@ -550,7 +550,7 @@ Antworte NUR mit JSON in genau dieser Form:
 - "remember": neue, harmlose Dinge, die ${n} gerade über sich erzählt hat, als kurze Stichpunkte (z. B. "Lieblingstier: Hund", "spielt gern Fußball"). Sonst leer. Niemals Adressen, Schule, Telefonnummern, Gesundheit, Familienprobleme oder andere private Dinge merken.${cfg.name ? "" : '\n- Wenn das Kind seinen Namen oder sein Alter sagt, gib zusätzlich "kid_name" und/oder "kid_age" (Zahl) zurück.'}
 - "choices": 2 bis 3 Antworten, die das Kind antippen kann (bei Spielen die Auswahl).
 - "star": true NUR wenn das Kind gerade eine Spielaufgabe richtig gelöst hat.
-- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff, z. B. mosquito","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Mosquito"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
+- "image": Wenn das Kind ein Bild sehen möchte (z. B. "zeig mir", "mal mir", "wie sieht ... aus") oder ein Bild super zum Gespräch passt, gib ein Objekt zurück: {"what":"kurz auf Deutsch, z. B. Mücke","wiki":"passender deutscher Wikipedia-Artikeltitel, z. B. Stechmücken","en":"englischer Suchbegriff für genau das Ding selbst, z. B. mosquito insect (nie Körperteile, Stiche, Verletzungen)","wiki_en":"genauer englischer Wikipedia-Artikeltitel, z. B. Mosquito"}. Sei so genau wie möglich: Bei "iPhone 5" heißt der Artikel "iPhone 5", nicht "iPhone". Sag im "say" fröhlich, dass du ein Bild zeigst (z. B. "Schau mal, so sieht eine Mücke aus!"). Nur kindgerechte Motive, keine echten Personen. Sonst weglassen.`;
   }
   function parseJSON(t){ try{ return JSON.parse(t); }catch{} const m=t.match(/\{[\s\S]*\}/); if(m){ try{ return JSON.parse(m[0]); }catch{} } return {say:t.replace(/[{}"]/g,""),choices:[]}; }
   async function callClaude(system, messages, maxTokens, model){
@@ -592,26 +592,24 @@ Antworte NUR mit JSON in genau dieser Form:
       if(c==='"'){ closed=true; break; } out+=c; }
     return {text:out, closed}; }
 
-  /* ---------- pictures ---------- */
-  async function pixabayImage(q){
-    const u="https://pixabay.com/api/?key="+encodeURIComponent(cfg.pkey)+"&q="+encodeURIComponent(q)+"&image_type=photo&safesearch=true&per_page=5&orientation=horizontal&order=popular";
-    const r=await fetch(u); if(!r.ok) return null; const j=await r.json(); const h=(j.hits||[])[0];
-    return h ? {src:h.webformatURL, credit:"Bild: Pixabay", link:h.pageURL} : null;
+  /* ---------- pictures (only curated sources + Claude safety check) ---------- */
+  async function pixabayImages(q){
+    const u="https://pixabay.com/api/?key="+encodeURIComponent(cfg.pkey)+"&q="+encodeURIComponent(q)+"&image_type=photo&safesearch=true&per_page=6&order=popular&lang=en";
+    const r=await fetch(u); if(!r.ok) return []; const j=await r.json();
+    return (j.hits||[]).slice(0,3).map(h=>({src:h.webformatURL, link:h.pageURL, src2:"Pixabay"}));
   }
-  async function unsplashImage(q){
-    const r=await fetch("https://api.unsplash.com/search/photos?per_page=5&orientation=landscape&content_filter=high&query="+encodeURIComponent(q),{headers:{"Authorization":"Client-ID "+cfg.ukey}});
-    if(!r.ok) return null; const h=((await r.json()).results||[])[0];
-    return h ? {src:h.urls.regular, credit:"Foto: "+(h.user?.name||"Unsplash")+" / Unsplash", link:h.links?.html} : null;
+  async function unsplashImages(q){
+    const r=await fetch("https://api.unsplash.com/search/photos?per_page=5&content_filter=high&query="+encodeURIComponent(q),{headers:{"Authorization":"Client-ID "+cfg.ukey}});
+    if(!r.ok) return []; return ((await r.json()).results||[]).slice(0,3).map(h=>({src:h.urls.regular, link:h.links?.html, src2:"Unsplash"}));
   }
-  async function pexelsImage(q){
-    const r=await fetch("https://api.pexels.com/v1/search?per_page=5&orientation=landscape&query="+encodeURIComponent(q),{headers:{"Authorization":cfg.xkey}});
-    if(!r.ok) return null; const h=((await r.json()).photos||[])[0];
-    return h ? {src:h.src.large, credit:"Foto: "+(h.photographer||"Pexels")+" / Pexels", link:h.url} : null;
+  async function pexelsImages(q){
+    const r=await fetch("https://api.pexels.com/v1/search?per_page=5&query="+encodeURIComponent(q),{headers:{"Authorization":cfg.xkey}});
+    if(!r.ok) return []; return ((await r.json()).photos||[]).slice(0,3).map(h=>({src:h.src.large, link:h.url, src2:"Pexels"}));
   }
-  async function openverseImage(q){
-    const r=await fetch("https://api.openverse.org/v1/images/?page_size=5&mature=false&aspect_ratio=wide&q="+encodeURIComponent(q));
-    if(!r.ok) return null; const res=((await r.json()).results||[]).filter(x=>x.url); const h=res.find(x=>(x.width||0)>=800)||res[0];
-    return h ? {src:h.url, credit:"Bild: "+(h.creator||"Openverse")+" ("+String(h.license||"cc").toUpperCase()+")", link:h.foreign_landing_url} : null;
+  async function wikiExact(lang,title){
+    const u="https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url&titles="+encodeURIComponent(title);
+    const r=await fetch(u); if(!r.ok) return []; const p=Object.values((await r.json())?.query?.pages||{})[0];
+    return p?.thumbnail?.source ? [{src:p.thumbnail.source, link:p.fullurl, src2:"Wikipedia"}] : [];
   }
   async function geminiImage(what){
     const prompt="Ein klares, schönes, kindgerechtes Bild von: "+what+". Das ganze Motiv vollständig im Bild sichtbar (nicht abgeschnitten), groß und mittig, heller ruhiger Hintergrund, realistisch und detailreich, freundlich und nicht gruselig. Kein Text, keine Schrift, keine Logos, keine echten Personen.";
@@ -626,43 +624,41 @@ Antworte NUR mit JSON in genau dieser Form:
     return {src:"data:"+mime+";base64,"+b, credit:"Bild: von Luno mit KI erstellt"};
   }
   let imgNote="";
-  async function wikiExact(lang,title){
-    const u="https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url&titles="+encodeURIComponent(title);
-    const r=await fetch(u); if(!r.ok) return null; const p=Object.values((await r.json())?.query?.pages||{})[0];
-    return p?.thumbnail?.source ? {src:p.thumbnail.source, credit:"Bild: Wikipedia – "+p.title, link:p.fullurl} : null;
-  }
-  async function wikiImage(term){
-    const u="https://de.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch="+encodeURIComponent(term)+"&prop=pageimages|info&piprop=thumbnail&pithumbsize=1200&inprop=url";
-    const r=await fetch(u); if(!r.ok) return null; const j=await r.json();
-    const pages=Object.values(j?.query?.pages||{}).sort((a,b)=>(a.index||0)-(b.index||0));
-    const p=pages.find(p=>p.thumbnail?.source); return p ? {src:p.thumbnail.source, credit:"Bild: Wikipedia – "+p.title, link:p.fullurl} : null;
+  // Claude looks at the picture: does it really show the thing, and is it fine for a small child?
+  async function imageIsOk(url, what){
+    if(mode!=="api" || !cfg.akey) return null; // cannot check
+    try{
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":cfg.akey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"},
+        body:JSON.stringify({model:"claude-haiku-5-5",max_tokens:5,messages:[{role:"user",content:[
+          {type:"image",source:{type:"url",url}},
+          {type:"text",text:'Ein '+(cfg.age||5)+'-jähriges Kind möchte "'+what+'" sehen. Zeigt dieses Bild deutlich und gut erkennbar genau das (das Ding selbst, nicht nur etwas Ähnliches oder Folgen davon)? Und ist es für kleine Kinder völlig unbedenklich: keine nackte Haut, keine Unterwäsche oder Badekleidung, keine Körperteile in Nahaufnahme, keine Verletzungen, kein Blut, keine Gewalt, nichts Gruseliges, kein Text im Mittelpunkt? Antworte nur mit JA oder NEIN.'}]}]})});
+      if(!r.ok) return false;
+      const t=((await r.json()).content||[]).map(c=>c.text||"").join("").trim().toUpperCase();
+      return t.startsWith("JA");
+    }catch{ return false; }
   }
   async function showImage(img){
     const what=String(img.what||img.wiki||"").slice(0,60);
     const pad=$("#sketch"), area=$("#sketch-area"); pad.hidden=false; $("#stage").classList.add("drawing");
     $("#sketch-title").textContent="Luno zeigt: "+what; $("#sketch-credit").textContent=""; $("#sketch-credit").removeAttribute("href");
     area.replaceChildren(); const wait=document.createElement("div"); wait.className="sketch-wait"; wait.textContent="🔭 Ich suche ein Bild"; area.append(wait);
+    const q=img.en||what; imgNote="";
+    const lists=await Promise.all([
+      cfg.pkey ? pixabayImages(q).catch(()=>[]) : [],
+      cfg.ukey ? unsplashImages(q).catch(()=>[]) : [],
+      cfg.xkey ? pexelsImages(q).catch(()=>[]) : [],
+      img.wiki ? wikiExact("de",img.wiki).catch(()=>[]) : [],
+      img.wiki_en ? wikiExact("en",img.wiki_en).catch(()=>[]) : []]);
+    // interleave sources so the best candidate of each source is checked first
+    const cands=[]; for(let i=0;i<3;i++) for(const l of lists) if(l[i] && !cands.some(c=>c.src===l[i].src)) cands.push(l[i]);
     let found=null;
-    const q=img.en||what;
-    imgNote="";
-    const sources=[
-      ()=>cfg.pkey && pixabayImage(q),
-      ()=>cfg.ukey && unsplashImage(q),
-      ()=>cfg.xkey && pexelsImage(q),
-      ()=>openverseImage(q),
-      ()=>img.wiki && wikiExact("de",img.wiki),
-      ()=>img.wiki_en && wikiExact("en",img.wiki_en),
-      ()=>img.wiki && wikiImage(img.wiki),
-      ()=>wikiImage(what),
-      ()=>null];
-    const aiLazy=()=>cfg.gkey && cfg.aiimg!==false ? geminiImage(what).catch(()=>null) : null;
-    // start all sources at once, take the best (first in list) that finds something
-    const tries=sources.map(f=>{ try{ return Promise.resolve(f()).catch(()=>null); }catch{ return Promise.resolve(null); } });
-    const ai=tries.pop(); // AI image only if nothing else is found
-    for(const t of tries){ const r=await t; if(r){ found=r; break; } }
-    if(!found) found=await aiLazy();
+    for(const c of cands.slice(0,6)){
+      const ok=await imageIsOk(c.src, what);
+      if(ok===true || (ok===null && c.src2!=="Wikipedia")){ found=c; break; }
+    }
+    if(!found && cfg.gkey && cfg.aiimg!==false) found=await geminiImage(what).catch(()=>null);
     if(imgNote) note(imgNote);
-    if(!found){ wait.textContent="Hmm, ich habe kein gutes Bild gefunden. Frag mich nach etwas anderem!"; return; }
+    if(!found){ wait.textContent="Hmm, ich habe kein passendes Bild gefunden. Frag mich nach etwas anderem!"; return; }
     const im=new Image(); im.alt=what; im.className="pic"; im.referrerPolicy="no-referrer";
     im.onload=()=>{ area.replaceChildren(im); $("#sketch-credit").textContent=found.link?"Quelle ↗":""; if(found.link) $("#sketch-credit").href=found.link; };
     im.onerror=()=>{ wait.textContent="Das Bild wollte nicht laden. Frag mich nochmal!"; };
