@@ -1533,7 +1533,105 @@ Antworte NUR mit JSON in genau dieser Form:
     fly.roboBegin=beginRound; beginRound(true);
     const idle=()=>{ if(!fly.on) return; if(!fly.playing){ drawRobo(ctx,cv); requestAnimationFrame(idle); } else requestAnimationFrame(idle); }; requestAnimationFrame(idle);
   }
-  function drawRobo(ctx,cv){ const W=cv.width, H=cv.height, d=devicePixelRatio, now=performance.now()/1000, gy=H*.86, skyY=H*.3, laneY=l=>l?skyY:gy-H*.12;
+  /* Detaillierte Fahrzeug-Zeichnungen (eigene Entwürfe): Sportwagen und Kampf-Roboter mit Autoteilen */
+  function lgrad(ctx,x0,y0,x1,y1,stops){ const g=ctx.createLinearGradient(x0,y0,x1,y1); stops.forEach((c,i)=>g.addColorStop(i/(stops.length-1),c)); return g; }
+  function drawWheel(ctx,x,y,r,rot,u){
+    ctx.fillStyle="#111"; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();                       // Reifen
+    ctx.strokeStyle="#2b2b2b"; ctx.lineWidth=r*.12; ctx.beginPath(); ctx.arc(x,y,r*.86,0,7); ctx.stroke(); // Profilkante
+    const rg=ctx.createRadialGradient(x-r*.2,y-r*.25,r*.05,x,y,r*.66); rg.addColorStop(0,"#ffffff"); rg.addColorStop(.45,"#c9ced6"); rg.addColorStop(1,"#6d7480");
+    ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(x,y,r*.66,0,7); ctx.fill();                       // Felge
+    ctx.fillStyle="#2a2f38"; for(let i=0;i<5;i++){ const a=rot+i*Math.PI*2/5; ctx.save(); ctx.translate(x,y); ctx.rotate(a);
+      ctx.beginPath(); ctx.moveTo(r*.14,-r*.07); ctx.lineTo(r*.6,-r*.13); ctx.lineTo(r*.6,r*.13); ctx.lineTo(r*.14,r*.07); ctx.fill(); ctx.restore(); } // Speichen-Zwischenräume
+    ctx.fillStyle="#d7263d"; ctx.beginPath(); ctx.arc(x,y,r*.5,rot*.0-2.4,-1.4); ctx.arc(x,y,r*.36,-1.4,-2.4,true); ctx.fill();   // Bremssattel
+    ctx.fillStyle="#9aa1ab"; ctx.beginPath(); ctx.arc(x,y,r*.14,0,7); ctx.fill(); ctx.fillStyle="#3a3f48"; ctx.beginPath(); ctx.arc(x,y,r*.06,0,7); ctx.fill(); }
+  function drawCar(ctx,u,now,rot){ const U=v=>v*u;
+    ctx.fillStyle="#0005"; ctx.beginPath(); ctx.ellipse(0,U(30),U(105),U(9),0,0,7); ctx.fill();     // Schatten
+    // Karosserie
+    ctx.beginPath(); ctx.moveTo(U(-96),U(12)); ctx.lineTo(U(-100),U(-6)); ctx.quadraticCurveTo(U(-99),U(-20),U(-88),U(-24)); ctx.lineTo(U(-56),U(-28));
+    ctx.bezierCurveTo(U(-40),U(-34),U(-26),U(-50),U(-2),U(-52)); ctx.lineTo(U(22),U(-50)); ctx.bezierCurveTo(U(42),U(-46),U(54),U(-32),U(66),U(-27));
+    ctx.lineTo(U(94),U(-19)); ctx.quadraticCurveTo(U(106),U(-15),U(104),U(0)); ctx.lineTo(U(100),U(12)); ctx.closePath();
+    ctx.fillStyle=lgrad(ctx,0,U(-52),0,U(14),["#ff6a74","#e3263d","#b0142a","#6e0816"]); ctx.fill();
+    ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.6); ctx.stroke();
+    // Schulterlinie + Glanz
+    ctx.strokeStyle="#ffffff70"; ctx.lineWidth=U(2.2); ctx.beginPath(); ctx.moveTo(U(-86),U(-16)); ctx.bezierCurveTo(U(-20),U(-21),U(40),U(-20),U(92),U(-12)); ctx.stroke();
+    ctx.fillStyle="#ffffff26"; ctx.beginPath(); ctx.ellipse(U(10),U(-30),U(60),U(5),-.04,0,7); ctx.fill();
+    // Fenster
+    ctx.beginPath(); ctx.moveTo(U(-48),U(-28)); ctx.bezierCurveTo(U(-32),U(-34),U(-20),U(-46),U(-2),U(-47)); ctx.lineTo(U(20),U(-46)); ctx.bezierCurveTo(U(36),U(-42),U(46),U(-33),U(54),U(-28)); ctx.closePath();
+    ctx.fillStyle=lgrad(ctx,0,U(-47),0,U(-27),["#9fd8ff","#2a5f8f","#14263f"]); ctx.fill();
+    ctx.fillStyle="#ffffff55"; ctx.beginPath(); ctx.moveTo(U(-20),U(-44)); ctx.lineTo(U(-8),U(-45)); ctx.lineTo(U(-26),U(-29)); ctx.lineTo(U(-36),U(-29)); ctx.fill();   // Spiegelung
+    ctx.fillStyle="#7a0a1a"; ctx.fillRect(U(1),U(-47),U(4),U(19));                                   // B-Säule
+    // Türfuge, Griff, Spiegel
+    ctx.strokeStyle="#6e0816"; ctx.lineWidth=U(1.2); ctx.beginPath(); ctx.moveTo(U(-46),U(-26)); ctx.lineTo(U(-44),U(6)); ctx.moveTo(U(50),U(-26)); ctx.quadraticCurveTo(U(46),U(-8),U(40),U(6)); ctx.moveTo(U(3),U(-27)); ctx.lineTo(U(3),U(6)); ctx.stroke();
+    ctx.fillStyle="#3a0610"; ctx.beginPath(); ctx.roundRect(U(-30),U(-18),U(12),U(3),U(1.5)); ctx.fill(); ctx.beginPath(); ctx.roundRect(U(22),U(-18),U(12),U(3),U(1.5)); ctx.fill();
+    ctx.fillStyle="#c41d33"; ctx.beginPath(); ctx.ellipse(U(52),U(-30),U(6),U(3.5),.3,0,7); ctx.fill();
+    // Seitenschweller + Lufteinlass
+    ctx.fillStyle="#1d1f26"; ctx.beginPath(); ctx.moveTo(U(-80),U(6)); ctx.lineTo(U(84),U(6)); ctx.lineTo(U(82),U(12)); ctx.lineTo(U(-78),U(12)); ctx.fill();
+    ctx.fillStyle="#141418"; ctx.beginPath(); ctx.moveTo(U(-24),U(-6)); ctx.lineTo(U(-6),U(-8)); ctx.lineTo(U(-8),U(-1)); ctx.lineTo(U(-24),U(0)); ctx.fill();
+    ctx.fillStyle="#141418"; ctx.beginPath(); ctx.moveTo(U(86),U(2)); ctx.lineTo(U(102),U(1)); ctx.lineTo(U(100),U(10)); ctx.lineTo(U(88),U(10)); ctx.fill();   // Front-Grill
+    // Scheinwerfer + Lichtkegel, Rücklicht
+    ctx.fillStyle=lgrad(ctx,U(86),0,U(104),0,["#fff7c9","#ffffff"]); ctx.beginPath(); ctx.moveTo(U(84),U(-16)); ctx.lineTo(U(100),U(-12)); ctx.lineTo(U(98),U(-7)); ctx.lineTo(U(84),U(-11)); ctx.fill();
+    ctx.fillStyle="#fff6b066"; ctx.beginPath(); ctx.moveTo(U(100),U(-12)); ctx.lineTo(U(150),U(-22)); ctx.lineTo(U(150),U(4)); ctx.lineTo(U(98),U(-7)); ctx.fill();
+    ctx.fillStyle="#ff2a3d"; ctx.beginPath(); ctx.moveTo(U(-100),U(-16)); ctx.lineTo(U(-90),U(-18)); ctx.lineTo(U(-91),U(-11)); ctx.lineTo(U(-100),U(-9)); ctx.fill();
+    ctx.shadowColor="#ff2a3d"; ctx.shadowBlur=U(8); ctx.fill(); ctx.shadowBlur=0;
+    // Heckspoiler
+    ctx.fillStyle="#1d1f26"; ctx.fillRect(U(-92),U(-27),U(3),U(6)); ctx.fillRect(U(-78),U(-29),U(3),U(6)); ctx.fillStyle=lgrad(ctx,0,U(-36),0,U(-29),["#ff5a68","#a3122a"]); ctx.beginPath(); ctx.roundRect(U(-100),U(-36),U(30),U(6),U(2)); ctx.fill();
+    // Radkästen + Räder
+    for(const wx of [-58,60]){ ctx.fillStyle="#0b0b0e"; ctx.beginPath(); ctx.arc(U(wx),U(10),U(25),Math.PI,0); ctx.fill(); drawWheel(ctx,U(wx),U(10),U(21),rot,u); }
+  }
+  function drawMech(ctx,u,now,rot){ const U=v=>v*u, t=now, bob=Math.sin(t*3)*U(3), sway=Math.sin(t*2.2)*.12;
+    const metal=(x0,y0,x1,y1)=>lgrad(ctx,x0,y0,x1,y1,["#eef1f5","#a8b0bc","#5f6773","#9aa2ad"]);
+    const armor=(x0,y0,x1,y1)=>lgrad(ctx,x0,y0,x1,y1,["#ff6a74","#e3263d","#a3122a","#6e0816"]);
+    const flame=(x,y,len,w)=>{ const f=len*(.85+Math.random()*.3); const g=ctx.createLinearGradient(x,y,x-f*.35,y+f); g.addColorStop(0,"#ffffff"); g.addColorStop(.25,"#9ff3ff"); g.addColorStop(.55,"#ffb347"); g.addColorStop(1,"#ff450000");
+      ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x-w,y); ctx.quadraticCurveTo(x-f*.35,y+f*.6,x-f*.35,y+f); ctx.quadraticCurveTo(x-f*.15,y+f*.55,x+w,y); ctx.fill(); };
+    ctx.save(); ctx.translate(0,bob);
+    // Rücken-Flügel (Heckspoiler) + Rückendüsen
+    ctx.fillStyle=armor(0,U(-90),0,U(-60)); ctx.beginPath(); ctx.moveTo(U(-20),U(-78)); ctx.lineTo(U(-78),U(-104)); ctx.lineTo(U(-84),U(-92)); ctx.lineTo(U(-26),U(-62)); ctx.fill();
+    ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.2); ctx.stroke();
+    flame(U(-30),U(-56),U(46),U(6));
+    // hinteres Bein
+    ctx.save(); ctx.translate(U(-8),U(-8)); ctx.rotate(.55+sway*.3);
+      ctx.fillStyle=metal(U(-10),0,U(10),0); ctx.beginPath(); ctx.roundRect(U(-9),0,U(18),U(38),U(5)); ctx.fill();
+      ctx.translate(0,U(36)); ctx.rotate(.35); ctx.fillStyle=armor(U(-12),0,U(12),0); ctx.beginPath(); ctx.roundRect(U(-12),0,U(24),U(42),U(6)); ctx.fill();
+      ctx.fillStyle="#22252c"; ctx.beginPath(); ctx.roundRect(U(-14),U(40),U(28),U(10),U(3)); ctx.fill(); flame(0,U(50),U(42),U(9)); ctx.restore();
+    // Becken
+    ctx.fillStyle=metal(U(-22),0,U(22),0); ctx.beginPath(); ctx.roundRect(U(-22),U(-14),U(44),U(18),U(6)); ctx.fill();
+    // Bauch (Segmente)
+    ctx.fillStyle="#2d323b"; ctx.beginPath(); ctx.roundRect(U(-18),U(-36),U(36),U(24),U(5)); ctx.fill();
+    ctx.strokeStyle="#5c6370"; ctx.lineWidth=U(1.5); for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(U(-15),U(-31+i*7)); ctx.lineTo(U(15),U(-31+i*7)); ctx.stroke(); }
+    // Brust: Motorhaube + Windschutzscheibe + Scheinwerfer
+    ctx.fillStyle=armor(0,U(-92),0,U(-34)); ctx.beginPath(); ctx.moveTo(U(-40),U(-90)); ctx.lineTo(U(40),U(-90)); ctx.lineTo(U(34),U(-50)); ctx.lineTo(U(18),U(-34)); ctx.lineTo(U(-18),U(-34)); ctx.lineTo(U(-34),U(-50)); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.5); ctx.stroke();
+    ctx.fillStyle=lgrad(ctx,0,U(-86),0,U(-60),["#bfe6ff","#2a5f8f","#14263f"]); ctx.beginPath(); ctx.moveTo(U(-28),U(-86)); ctx.lineTo(U(28),U(-86)); ctx.lineTo(U(22),U(-62)); ctx.lineTo(U(-22),U(-62)); ctx.fill();
+    ctx.fillStyle="#ffffff60"; ctx.beginPath(); ctx.moveTo(U(-16),U(-85)); ctx.lineTo(U(-8),U(-85)); ctx.lineTo(U(-16),U(-63)); ctx.lineTo(U(-22),U(-63)); ctx.fill();
+    ctx.strokeStyle="#ffffff50"; ctx.lineWidth=U(1); ctx.beginPath(); ctx.moveTo(0,U(-60)); ctx.lineTo(0,U(-36)); ctx.stroke();
+    ctx.shadowColor="#fff2a8"; ctx.shadowBlur=U(10); ctx.fillStyle="#fff7c9"; ctx.beginPath(); ctx.ellipse(U(-24),U(-50),U(7),U(3.5),.4,0,7); ctx.ellipse(U(24),U(-50),U(7),U(3.5),-.4,0,7); ctx.fill(); ctx.shadowBlur=0;
+    // Kopf
+    ctx.fillStyle="#3a3f48"; ctx.fillRect(U(-6),U(-98),U(12),U(10));
+    ctx.fillStyle=metal(U(-18),U(-130),U(18),U(-96)); ctx.beginPath(); ctx.moveTo(U(-16),U(-98)); ctx.lineTo(U(-18),U(-118)); ctx.lineTo(U(-8),U(-130)); ctx.lineTo(U(8),U(-130)); ctx.lineTo(U(18),U(-118)); ctx.lineTo(U(16),U(-98)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=armor(0,U(-138),0,U(-118)); ctx.beginPath(); ctx.moveTo(U(-4),U(-128)); ctx.lineTo(0,U(-140)); ctx.lineTo(U(4),U(-128)); ctx.fill();          // Kamm
+    ctx.fillStyle="#9aa2ad"; ctx.beginPath(); ctx.moveTo(U(-18),U(-118)); ctx.lineTo(U(-26),U(-130)); ctx.lineTo(U(-16),U(-112)); ctx.fill(); ctx.beginPath(); ctx.moveTo(U(18),U(-118)); ctx.lineTo(U(26),U(-130)); ctx.lineTo(U(16),U(-112)); ctx.fill(); // Antennen
+    ctx.shadowColor="#5ee6ff"; ctx.shadowBlur=U(12); ctx.fillStyle="#7ff0ff"; ctx.beginPath(); ctx.moveTo(U(-13),U(-116)); ctx.lineTo(U(13),U(-116)); ctx.lineTo(U(10),U(-109)); ctx.lineTo(U(-10),U(-109)); ctx.fill(); ctx.shadowBlur=0;  // Visier
+    ctx.fillStyle="#2d323b"; ctx.fillRect(U(-8),U(-104),U(16),U(4));                                  // Mundplatte
+    // Schultern mit Rädern
+    for(const sx of [-1,1]){ ctx.fillStyle=armor(0,U(-100),0,U(-76)); ctx.beginPath(); ctx.roundRect(U(sx*40-14),U(-98),U(28),U(22),U(7)); ctx.fill(); ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.2); ctx.stroke();
+      drawWheel(ctx,U(sx*40),U(-87),U(11),rot*.3,u); }
+    // Arme: hinterer zeigt nach vorne, vorderer schwingt
+    for(const [sx,ang] of [[-1,-.4+sway],[1,-1.2-sway]]){ ctx.save(); ctx.translate(U(sx*42),U(-76)); ctx.rotate(ang);
+      ctx.fillStyle=metal(U(-7),0,U(7),0); ctx.beginPath(); ctx.roundRect(U(-7),0,U(14),U(30),U(4)); ctx.fill();
+      ctx.strokeStyle="#c9ced6"; ctx.lineWidth=U(2); ctx.beginPath(); ctx.moveTo(U(5),U(3)); ctx.lineTo(U(5),U(27)); ctx.stroke(); // Hydraulik
+      ctx.fillStyle="#2d323b"; ctx.beginPath(); ctx.arc(0,U(30),U(6),0,7); ctx.fill();
+      ctx.translate(0,U(30)); ctx.rotate(-.5); ctx.fillStyle=armor(U(-9),0,U(9),0); ctx.beginPath(); ctx.roundRect(U(-9),0,U(18),U(30),U(5)); ctx.fill();
+      ctx.fillStyle=metal(U(-8),U(28),U(8),U(42)); ctx.beginPath(); ctx.roundRect(U(-8),U(28),U(16),U(13),U(4)); ctx.fill(); ctx.restore(); }
+    // vorderes Bein
+    ctx.save(); ctx.translate(U(10),U(-6)); ctx.rotate(.25-sway*.3);
+      ctx.fillStyle=metal(U(-11),0,U(11),0); ctx.beginPath(); ctx.roundRect(U(-11),0,U(22),U(40),U(6)); ctx.fill();
+      ctx.fillStyle="#2d323b"; ctx.beginPath(); ctx.arc(0,U(40),U(8),0,7); ctx.fill();
+      ctx.translate(0,U(40)); ctx.rotate(.3); ctx.fillStyle=armor(U(-14),0,U(14),0); ctx.beginPath(); ctx.roundRect(U(-14),0,U(28),U(46),U(7)); ctx.fill(); ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.2); ctx.stroke();
+      drawWheel(ctx,U(-14),U(20),U(12),rot*.3,u);
+      ctx.fillStyle="#22252c"; ctx.beginPath(); ctx.roundRect(U(-16),U(44),U(32),U(11),U(3)); ctx.fill(); flame(0,U(55),U(55),U(11)); ctx.restore();
+    ctx.restore(); }
+
+  function drawRobo(ctx,cv){ const W=cv.width, H=cv.height, d=devicePixelRatio, now=performance.now()/1000, gy=H*.86, skyY=H*.3, laneY=l=>l?skyY:gy-H*.065;
     const g=ctx.createLinearGradient(0,0,0,gy); g.addColorStop(0,"#3a6fd8"); g.addColorStop(.5,"#79c3f2"); g.addColorStop(1,"#cdeeff"); ctx.fillStyle=g; ctx.fillRect(0,0,W,gy);
     ctx.fillStyle="#ffffffcc"; for(const c of fly.clouds){ const x=c.x*W, y=c.y*H+H*.1, r=H*.03*c.s; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.arc(x+r,y-r*.5,r*1.2,0,7); ctx.arc(x+r*2.1,y,r,0,7); ctx.fill(); }
     ctx.fillStyle="#86c96f"; for(const h of fly.hills){ ctx.beginPath(); ctx.ellipse(h.x*W,gy,W*.16,H*h.h*2.2,0,Math.PI,0); ctx.fill(); }
@@ -1551,25 +1649,21 @@ Antworte NUR mit JSON in genau dieser Form:
         if(it.glow && it.ok){ ctx.fillStyle="#ffd36e66"; ctx.beginPath(); ctx.roundRect(x-bw/2-10*d,y-bh/2-10*d,bw+20*d,bh+20*d,bh*.4); ctx.fill(); }
         ctx.fillStyle="#fff"; ctx.strokeStyle="#2a2160"; ctx.lineWidth=4*d; ctx.beginPath(); ctx.roundRect(x-bw/2,y-bh/2,bw,bh,bh*.3); ctx.fill(); ctx.stroke();
         ctx.fillStyle="#2a2160"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt,x,y+fs*.05); } }
-    // Fahrzeug: Auto <-> Roboter
-    const PX=.22*W, y=gy-H*.12+(skyY-(gy-H*.12))*fly.alt, s=H*.11, robot=fly.alt>.5, blink=fly.inv>0 && Math.floor(now*10)%2===0;
-    if(!blink){ ctx.save(); ctx.translate(PX,y); const m=fly.morph||0; ctx.scale(1-m*.25,1+m*.15);
-      if(!robot){ // Auto
-        ctx.fillStyle="#d7263d"; ctx.beginPath(); ctx.roundRect(-s*.9,-s*.25,s*1.8,s*.45,s*.15); ctx.fill();
-        ctx.beginPath(); ctx.roundRect(-s*.45,-s*.62,s*.95,s*.45,s*.18); ctx.fill();
-        ctx.fillStyle="#bfe9ff"; ctx.fillRect(-s*.35,-s*.55,s*.35,s*.3); ctx.fillRect(s*.05,-s*.55,s*.35,s*.3);
-        ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.arc(s*.85,-s*.05,s*.07,0,7); ctx.fill();
-        for(const wx of [-s*.5,s*.5]){ ctx.fillStyle="#222"; ctx.beginPath(); ctx.arc(wx,s*.22,s*.2,0,7); ctx.fill(); ctx.strokeStyle="#bbb"; ctx.lineWidth=s*.04; const a=fly.scroll*60; ctx.beginPath(); ctx.moveTo(wx+Math.cos(a)*s*.12,s*.22+Math.sin(a)*s*.12); ctx.lineTo(wx-Math.cos(a)*s*.12,s*.22-Math.sin(a)*s*.12); ctx.stroke(); } }
-      else { // Roboter mit Düsen
-        const fl=s*(.25+Math.random()*.15); ctx.fillStyle="#ff9f1c"; ctx.beginPath(); ctx.moveTo(-s*.35,s*.35); ctx.lineTo(-s*.25,s*.35+fl); ctx.lineTo(-s*.15,s*.35); ctx.moveTo(s*.15,s*.35); ctx.lineTo(s*.25,s*.35+fl); ctx.lineTo(s*.35,s*.35); ctx.fill();
-        ctx.fillStyle="#d7263d"; ctx.beginPath(); ctx.roundRect(-s*.4,-s*.35,s*.8,s*.7,s*.12); ctx.fill();
-        ctx.fillStyle="#9aa6b8"; ctx.fillRect(-s*.4,s*.2,s*.25,s*.17); ctx.fillRect(s*.15,s*.2,s*.25,s*.17);
-        ctx.strokeStyle="#d7263d"; ctx.lineWidth=s*.14; ctx.lineCap="round"; const wave=Math.sin(now*6)*.3; ctx.beginPath(); ctx.moveTo(-s*.4,-s*.2); ctx.lineTo(-s*.75,-s*.45+wave*s*.2); ctx.moveTo(s*.4,-s*.2); ctx.lineTo(s*.8,-s*.5-wave*s*.2); ctx.stroke();
-        ctx.fillStyle="#c7d0dd"; ctx.beginPath(); ctx.roundRect(-s*.3,-s*.78,s*.6,s*.43,s*.12); ctx.fill();
-        ctx.fillStyle="#5ee6c4"; ctx.beginPath(); ctx.roundRect(-s*.22,-s*.66,s*.44,s*.16,s*.08); ctx.fill();
-        ctx.fillStyle="#ffd36e"; ctx.beginPath(); ctx.arc(-s*.2,-s*.05,s*.07,0,7); ctx.arc(s*.2,-s*.05,s*.07,0,7); ctx.fill(); }
-      ctx.restore();
-      if(fly.morph>0){ ctx.globalAlpha=fly.morph; ctx.font=Math.round(s*.5)+"px sans-serif"; ctx.textAlign="center"; for(let i=0;i<5;i++){ const a=i*1.26+now*3; ctx.fillText("✨",PX+Math.cos(a)*s,y+Math.sin(a)*s*.8); } ctx.globalAlpha=1; } }
+    // Fahrzeug: Auto <-> Roboter (mit Verwandlung)
+    const PX=.22*W, carY=gy-H*.065, y=carY+(skyY-carY)*fly.alt, u=H*.00105, blink=fly.inv>0 && Math.floor(now*10)%2===0, rot=fly.scroll*55;
+    const m=fly.morph||0, toRobot=fly.lane===1;
+    if(!blink){
+      const drawForm=(isRobot,alpha,squash)=>{ if(alpha<=0) return; ctx.save(); ctx.globalAlpha=alpha; ctx.translate(PX,y+(isRobot?U2(40):0)); ctx.scale(1+squash*.1,1-squash*.45);
+        if(isRobot) drawMech(ctx,u,now,rot); else drawCar(ctx,u*1.2,now,rot); ctx.restore(); };
+      function U2(v){ return v*u; }
+      if(m>0){ const p=1-m; // Verwandlung: altes Fahrzeug klappt zusammen, neues entfaltet sich
+        drawForm(!toRobot, Math.max(0,1-p*1.6), p);
+        drawForm(toRobot, Math.min(1,p*1.6-.3), 1-p);
+        ctx.save(); ctx.globalAlpha=m*.8; const fl=ctx.createRadialGradient(PX,y,0,PX,y,H*.14); fl.addColorStop(0,"#ffffff"); fl.addColorStop(.4,"#9ff3ff88"); fl.addColorStop(1,"#9ff3ff00"); ctx.fillStyle=fl; ctx.beginPath(); ctx.arc(PX,y,H*.14,0,7); ctx.fill();
+        ctx.strokeStyle="#c9ced6"; ctx.lineWidth=3*d; for(let i=0;i<8;i++){ const a=i*.785+now*6, r1=H*.05*(1+p), r2=r1+H*.03; ctx.beginPath(); ctx.moveTo(PX+Math.cos(a)*r1,y+Math.sin(a)*r1); ctx.lineTo(PX+Math.cos(a)*r2,y+Math.sin(a)*r2); ctx.stroke(); }
+        ctx.restore(); }
+      else drawForm(fly.alt>.5,1,0);
+    }
     for(const p of fly.parts){ ctx.globalAlpha=Math.max(0,1-p.t*1.3); ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x*W,p.y*H,5*d,0,7); ctx.fill(); } ctx.globalAlpha=1;
     ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(18*d)+"px Nunito, sans-serif"; ctx.textAlign="right"; ctx.textBaseline="bottom";
     const r=fly.round; if(r) ctx.fillText(["","Stufe 1: Buchstaben","Stufe 2: Wörter","Stufe 3: Sätze"][r.stage]+" · "+(fly.ri+1)+"/"+fly.plan.length,W-16*d,H-16*d);
