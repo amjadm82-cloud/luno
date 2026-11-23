@@ -80,6 +80,18 @@ details[open]{display:grid;gap:8px}
 .fly-word{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
 .fly-word span{width:clamp(34px,6vw,54px);height:clamp(42px,7vw,62px);border-radius:12px;display:grid;place-items:center;font:800 clamp(1.4rem,3.6vw,2.2rem) var(--display);background:#141a3dcc;color:#ffffff88;border:3px dashed #ffffff66}
 .fly-word span.got{background:var(--glow);color:#2a2160;border:3px solid #fff;animation:pop .35s ease}
+.lr-st{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:min(92vw,760px);background:#fffdf6;color:#2a2160;border-radius:28px;padding:22px 20px 18px;text-align:center;box-shadow:0 14px 0 #00000033,0 0 0 6px #ffd36e;z-index:5}
+.lr-q{font:800 clamp(1.2rem,3.4vw,1.8rem) var(--display)}
+.lr-big{font:800 clamp(3rem,11vw,6.5rem)/1.1 Nunito,'Arial Black',sans-serif;margin:10px 0 14px;letter-spacing:.02em}
+.lr-big.sent{font-size:clamp(1.8rem,6vw,3.6rem)}
+.lr-big .syl0{color:#2f6fd6;font-style:normal}.lr-big .syl1{color:#d7263d;font-style:normal}
+.lr-opts{display:flex;gap:16px;justify-content:center;margin:16px 0}
+.lr-opt{width:clamp(80px,18vw,140px);height:clamp(90px,20vw,150px);border-radius:22px;border:4px solid #2a2160;background:#fff;font:800 clamp(2.6rem,8vw,4.6rem) Nunito,sans-serif;color:#2a2160;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 0 #2a216055}
+.lr-opt small{font-size:.45em;opacity:.6}.lr-opt.ok{background:#5ee6c4}.lr-opt.no{background:#ffb3b3;opacity:.6}
+.lr-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.lr-row button{font:800 1.15rem Nunito,sans-serif;border:0;border-radius:999px;padding:12px 22px;background:#2a2160;color:#fff;cursor:pointer}
+.lr-row .lr-help{background:#e9e5ff;color:#2a2160}.lr-row .lr-ok{background:#2fb84a}
+.lr-fb{min-height:1.6em;margin-top:10px;font:800 1.2rem Nunito,sans-serif}
 .fly-word span.w{width:auto;padding:0 .45em;font-size:clamp(1rem,2.6vw,1.6rem)}
 .fly-word span.next{border-color:var(--mint);color:var(--mint)}
 .fly-word span.say{transform:scale(1.22);box-shadow:0 0 0 4px #fff,0 0 18px var(--glow);color:#fff;transition:transform .15s}
@@ -289,6 +301,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
     <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
     <button class="game" data-game="rennen"><span class="em">🏎️</span><b>Buchstaben-Rennen</b><small>Fahre schnell und sammle die richtigen Buchstaben!</small></button>
+    <button class="game" data-game="lese"><span class="em">🏁</span><b>Lese-Rallye</b><small>Lesen lernen und Rennen fahren: Buchstaben, Wörter, Sätze</small></button>
     <button class="game" data-game="robo"><span class="em">🤖</span><b>Robo-Flitzer</b><small>Auto fährt, Roboter fliegt – Buchstaben, Wörter und Sätze sammeln!</small></button>
     <button class="game" data-game="ballons"><span class="em">🎈</span><b>Buchstaben-Ballons</b><small>Ballons steigen langsam – tippe die richtigen Buchstaben!</small></button>
     <button class="game" data-game="lauf"><span class="em">🏃</span><b>Buchstaben-Lauf</b><small>Renn, spring, sammle Buchstaben und Gold – gewinn den Pokal!</small></button>
@@ -441,7 +454,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     for(const c of (list||[]).slice(0,4)){
       const b=document.createElement("button"); b.className="choice";
       const e=document.createElement("span"); e.className="em"; e.textContent=c.emoji||"⭐";
-      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : /karussell/i.test(c.text||"") ? chooseFlightWord("karussell") : /buchstaben-?lauf/i.test(c.text||"") ? chooseFlightWord("lauf") : /ballon/i.test(c.text||"") ? chooseFlightWord("ballons") : /robo/i.test(c.text||"") ? chooseFlightWord("robo") : send(c.text);
+      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : /karussell/i.test(c.text||"") ? chooseFlightWord("karussell") : /buchstaben-?lauf/i.test(c.text||"") ? chooseFlightWord("lauf") : /ballon/i.test(c.text||"") ? chooseFlightWord("ballons") : /robo/i.test(c.text||"") ? chooseFlightWord("robo") : /lese-?rallye/i.test(c.text||"") ? startLese() : send(c.text);
       box.append(b);
     }
   }
@@ -1043,12 +1056,12 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#2a2160"; ctx.beginPath(); ctx.arc(s*.24,-s*.02,s*.06,0,7); ctx.arc(s*.48,-s*.02,s*.06,0,7); ctx.fill();
     ctx.restore();
   }
-  function endFlight(){ const cvx=$("#fly-cv"); cvx.onpointerdown=null; fly.sentence=null; $("#fly-jump").hidden=true; const fe=$("#fly"); fe.onpointerdown=fe.onpointerup=null; $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
-  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Robo-Flitzer",emoji:"🤖"},{text:"Buchstaben-Ballons",emoji:"🎈"},{text:"Buchstaben-Lauf",emoji:"🏃"},{text:"Buchstaben-Karussell",emoji:"🎠"},{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
-  const restartMode=(m,w,e)=> m==="race"?startRace(w,e): m==="ring"?startRing(w,e): m==="run"?startRun(fly.words?.[0]||w,e): m==="balloon"?startBalloons(w,e): m==="robo"?startRobo(fly.plan?.[0]?.word||w,e): startFlight(w,e);
+  function endFlight(){ const cvx=$("#fly-cv"); cvx.onpointerdown=null; fly.sentence=null; const lrs=$("#lr-st"); if(lrs) lrs.hidden=true; $("#fly-jump").hidden=true; const fe=$("#fly"); fe.onpointerdown=fe.onpointerup=null; $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
+  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Lese-Rallye",emoji:"🏁"},{text:"Robo-Flitzer",emoji:"🤖"},{text:"Buchstaben-Ballons",emoji:"🎈"},{text:"Buchstaben-Lauf",emoji:"🏃"},{text:"Buchstaben-Karussell",emoji:"🎠"},{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
+  const restartMode=(m,w,e)=> m==="race"?startRace(w,e): m==="ring"?startRing(w,e): m==="run"?startRun(fly.words?.[0]||w,e): m==="balloon"?startBalloons(w,e): m==="robo"?startRobo(fly.plan?.[0]?.word||w,e): m==="lese"?startLese(): startFlight(w,e);
   $("#fly-again").onclick=()=>{ const w=fly.word, e=fly.easy, m=fly.mode; endFlight(); restartMode(m,w,e); };
   $("#fly-easy").onclick=()=>{ const w=fly.word, m=fly.mode; endFlight(); restartMode(m,w,true); };
-  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); chooseFlightWord(m==="race"?"rennen":m==="ring"?"karussell":m==="run"?"lauf":m==="balloon"?"ballons":m==="robo"?"robo":"flug"); };
+  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); if(m==="lese"){ startLese(); return; } chooseFlightWord(m==="race"?"rennen":m==="ring"?"karussell":m==="run"?"lauf":m==="balloon"?"ballons":m==="robo"?"robo":"flug"); };
 
   /* ---------- Buchstaben-Karussell: Buchstaben drehen sich ums Wort, das Kind tippt in Reihenfolge ---------- */
   function startRing(word, easy){
@@ -1544,14 +1557,14 @@ Antworte NUR mit JSON in genau dieser Form:
       ctx.beginPath(); ctx.moveTo(r*.14,-r*.07); ctx.lineTo(r*.6,-r*.13); ctx.lineTo(r*.6,r*.13); ctx.lineTo(r*.14,r*.07); ctx.fill(); ctx.restore(); } // Speichen-Zwischenräume
     ctx.fillStyle="#d7263d"; ctx.beginPath(); ctx.arc(x,y,r*.5,rot*.0-2.4,-1.4); ctx.arc(x,y,r*.36,-1.4,-2.4,true); ctx.fill();   // Bremssattel
     ctx.fillStyle="#9aa1ab"; ctx.beginPath(); ctx.arc(x,y,r*.14,0,7); ctx.fill(); ctx.fillStyle="#3a3f48"; ctx.beginPath(); ctx.arc(x,y,r*.06,0,7); ctx.fill(); }
-  function drawCar(ctx,u,now,rot){ const U=v=>v*u;
+  function drawCar(ctx,u,now,rot,pal){ pal=pal||["#ff6a74","#e3263d","#b0142a","#6e0816"]; const U=v=>v*u;
     ctx.fillStyle="#0005"; ctx.beginPath(); ctx.ellipse(0,U(30),U(105),U(9),0,0,7); ctx.fill();     // Schatten
     // Karosserie
     ctx.beginPath(); ctx.moveTo(U(-96),U(12)); ctx.lineTo(U(-100),U(-6)); ctx.quadraticCurveTo(U(-99),U(-20),U(-88),U(-24)); ctx.lineTo(U(-56),U(-28));
     ctx.bezierCurveTo(U(-40),U(-34),U(-26),U(-50),U(-2),U(-52)); ctx.lineTo(U(22),U(-50)); ctx.bezierCurveTo(U(42),U(-46),U(54),U(-32),U(66),U(-27));
     ctx.lineTo(U(94),U(-19)); ctx.quadraticCurveTo(U(106),U(-15),U(104),U(0)); ctx.lineTo(U(100),U(12)); ctx.closePath();
-    ctx.fillStyle=lgrad(ctx,0,U(-52),0,U(14),["#ff6a74","#e3263d","#b0142a","#6e0816"]); ctx.fill();
-    ctx.strokeStyle="#4a0610"; ctx.lineWidth=U(1.6); ctx.stroke();
+    ctx.fillStyle=lgrad(ctx,0,U(-52),0,U(14),pal); ctx.fill();
+    ctx.strokeStyle=pal[3]; ctx.lineWidth=U(1.6); ctx.stroke();
     // Schulterlinie + Glanz
     ctx.strokeStyle="#ffffff70"; ctx.lineWidth=U(2.2); ctx.beginPath(); ctx.moveTo(U(-86),U(-16)); ctx.bezierCurveTo(U(-20),U(-21),U(40),U(-20),U(92),U(-12)); ctx.stroke();
     ctx.fillStyle="#ffffff26"; ctx.beginPath(); ctx.ellipse(U(10),U(-30),U(60),U(5),-.04,0,7); ctx.fill();
@@ -1574,7 +1587,7 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#ff2a3d"; ctx.beginPath(); ctx.moveTo(U(-100),U(-16)); ctx.lineTo(U(-90),U(-18)); ctx.lineTo(U(-91),U(-11)); ctx.lineTo(U(-100),U(-9)); ctx.fill();
     ctx.shadowColor="#ff2a3d"; ctx.shadowBlur=U(8); ctx.fill(); ctx.shadowBlur=0;
     // Heckspoiler
-    ctx.fillStyle="#1d1f26"; ctx.fillRect(U(-92),U(-27),U(3),U(6)); ctx.fillRect(U(-78),U(-29),U(3),U(6)); ctx.fillStyle=lgrad(ctx,0,U(-36),0,U(-29),["#ff5a68","#a3122a"]); ctx.beginPath(); ctx.roundRect(U(-100),U(-36),U(30),U(6),U(2)); ctx.fill();
+    ctx.fillStyle="#1d1f26"; ctx.fillRect(U(-92),U(-27),U(3),U(6)); ctx.fillRect(U(-78),U(-29),U(3),U(6)); ctx.fillStyle=lgrad(ctx,0,U(-36),0,U(-29),[pal[0],pal[2]]); ctx.beginPath(); ctx.roundRect(U(-100),U(-36),U(30),U(6),U(2)); ctx.fill();
     // Radkästen + Räder
     for(const wx of [-58,60]){ ctx.fillStyle="#0b0b0e"; ctx.beginPath(); ctx.arc(U(wx),U(10),U(25),Math.PI,0); ctx.fill(); drawWheel(ctx,U(wx),U(10),U(21),rot,u); }
   }
@@ -1669,6 +1682,132 @@ Antworte NUR mit JSON in genau dieser Form:
     const r=fly.round; if(r) ctx.fillText(["","Stufe 1: Buchstaben","Stufe 2: Wörter","Stufe 3: Sätze"][r.stage]+" · "+(fly.ri+1)+"/"+fly.plan.length,W-16*d,H-16*d);
     ctx.textAlign="left"; ctx.fillText("⬆️ oben tippen = fliegen   ⬇️ unten tippen = fahren",16*d,H-16*d);
     if(fly.banner){ ctx.globalAlpha=Math.max(0,Math.min(1,2.4-fly.banner.t*1.2)); ctx.fillStyle="#ffd36e"; ctx.font=Math.round(Math.min(W,H)*.08)+"px Sniglet, Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.lineWidth=8*d; ctx.strokeStyle="#2a2160"; ctx.strokeText(fly.banner.txt,W/2,H*.5); ctx.fillText(fly.banner.txt,W/2,H*.5); ctx.globalAlpha=1; }
+  }
+
+  /* ---------- Lese-Rallye: Lesen und Rennfahren im Wechsel. Buchstaben -> Rennen -> Wörter -> Rennen -> Sätze -> Rennen ---------- */
+  const LR_W1=["Ball","Hund","Maus","Eis","Mond","Bus","Hut","Fisch","Baum","Kuh"];
+  const LR_W2=["Son-ne","Au-to","Ha-se","Ka-tze","Ra-ke-te","Ba-na-ne","To-ma-te","Bie-ne","Lö-we","Gi-raf-fe"];
+  const LR_S=["Der Hund spielt.","Die Sonne scheint.","Das Auto ist rot.","Der Ball ist rund.","Ich mag Eis.","Die Maus ist klein.","Der Fisch schwimmt.","Mama lacht."];
+  const LR_LET="AMOSLEINUTRHBD";
+  const LR_COLS=[["#7fb8ff","#2f6fd6","#1a4a9e","#0c2a5e"],["#9cf0a8","#2fb84a","#1d7f31","#0d4a1b"],["#ffe08a","#f2b705","#b98500","#6e4f00"],["#e2b8ff","#9b4de0","#6a28a6","#3c1260"]];
+  function lrLev(a,b){ const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i]); for(let j=1;j<=n;j++) d[0][j]=j;
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)); return d[m][n]; }
+  function lrReadOk(target, alts){ if(!alts) return null; const want=target.split(/\s+/).map(roboNorm).filter(Boolean); let best=0;
+    for(const a of alts){ const got=roboNorm(a).split(/\s+/); const hit=want.filter(w=>got.some(g=>g===w || (w.length>=4 && lrLev(g,w)<=1))).length; best=Math.max(best,hit/want.length); }
+    return want.length===1 ? best>=1 : best>=.7; }
+  function lrPlan(){ const age=+cfg.age||6, pick=(a,n)=>[...a].sort(()=>Math.random()-.5).slice(0,n);
+    const p=[{t:"letters",items:pick([...LR_LET],3)},{t:"race",n:1},{t:"read",kind:"Wort",items:pick(LR_W1,2)},{t:"race",n:2},{t:"read",kind:"Wort",items:pick(LR_W2,2)},{t:"race",n:3}];
+    if(age>=5){ const s=pick(LR_S,2); p.push({t:"read",kind:"Satz",items:[s[0]]},{t:"race",n:4},{t:"read",kind:"Satz",items:[s[1]]},{t:"race",n:5}); }
+    p[p.length-1].final=true; return p; }
+  function startLese(){
+    stopSpeaking(); if(listening) rec?.stop();
+    const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=true; $("#fly-brake").hidden=true;
+    Object.assign(fly,{goldHearts:0, mode:"lese", on:true, playing:false, raf:0, mistakes:0, hearts:5, maxHearts:5, easy:false, activeT:0, word:"", idx:0, items:[], parts:[],
+      plan:lrPlan(), pi:0, coins:0, reads:0, readsFirst:0, boost:0, places:[], lane:0, alt:0, pos:0, speed:0, rivals:[], scroll:0, hills:Array.from({length:8},(_,i)=>({x:i/7,h:.05+Math.random()*.08})),
+      clouds:Array.from({length:6},()=>({x:Math.random(),y:.06+Math.random()*.2,s:.6+Math.random()*.8}))});
+    $("#fly-word").replaceChildren(); $("#fly-time").textContent="🪙 0"; $("#fly-hearts").replaceChildren(); $("#fly-oops").hidden=true; $("#fly-msg").textContent="";
+    const fit=()=>{ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; }; fit(); fly.fit=fit; addEventListener("resize",fit);
+    let st=$("#lr-st"); if(!st){ st=document.createElement("div"); st.id="lr-st"; st.className="lr-st"; el.append(st); } st.hidden=true;
+    const header=txt=>{ const b=$("#fly-word"); b.replaceChildren(); const pic=document.createElement("b"); pic.className="fly-pic"; pic.textContent="🏁"; b.append(pic);
+      const s=document.createElement("span"); s.className="w next"; s.textContent=txt; b.append(s); };
+    const waitSpeech=ms=>Promise.race([speechDone(), new Promise(r=>setTimeout(r,ms))]);
+    function next(){ if(!fly.on) return; const step=fly.plan[fly.pi]; if(!step){ finish(); return; }
+      if(step.t==="letters") letters(step); else if(step.t==="read") reading(step); else race(step); }
+    // --- Station 1: Buchstaben erkennen (Luno sagt, Kind tippt) ---
+    async function letters(step){ header("Lese-Station: Buchstaben"); drawLR(ctx,cv,true);
+      for(const L of step.items){ if(!fly.on) return; const opts=[L,...[...LR_LET].filter(c=>c!==L).sort(()=>Math.random()-.5).slice(0,2)].sort(()=>Math.random()-.5);
+        await new Promise(done=>{ let tries=0;
+          st.innerHTML='<div class="lr-q" data-t="'+L+'">🔊 Hör gut zu – welcher Buchstabe ist es?</div><div class="lr-opts">'+opts.map(o=>'<button type="button" class="lr-opt" data-c="'+o+'">'+o+'<small>'+o.toLowerCase()+'</small></button>').join("")+'</div><div class="lr-row"><button type="button" class="lr-help">🔊 Nochmal hören</button></div><div class="lr-fb"></div>';
+          st.hidden=false; stopSpeaking(); sayChunk("Wo ist das "+Lwie(L)+"?", .9);
+          st.querySelector(".lr-help").onclick=()=>{ stopSpeaking(); sayChunk("Wo ist das "+Lwie(L)+"?", .85); };
+          st.querySelectorAll(".lr-opt").forEach(b=>b.onclick=()=>{ const c=b.dataset.c;
+            if(c===L){ b.classList.add("ok"); sfx("good"); fly.reads++; if(!tries) fly.readsFirst++; fly.boost++; fly.coins+=3; $("#fly-time").textContent="🪙 "+fly.coins; stopSpeaking(); sayChunk("Richtig! Das ist das "+Lsay(L)+".", .9); setTimeout(done,1300); }
+            else { tries++; b.classList.add("no"); sfx("bad"); stopSpeaking(); sayChunk("Das ist ein "+Lsay(c)+". Versuch es nochmal! Wo ist das "+Lsay(L)+"?", .85); } }); }); }
+      st.hidden=true; fly.pi++; await waitSpeech(4000); next(); }
+    // --- Station 2/3: Wort oder Satz laut vorlesen (Spracherkennung) ---
+    async function reading(step){ header("Lese-Station: "+(step.kind==="Wort"?"Wörter":"Sätze")); drawLR(ctx,cv,true);
+      for(const item of step.items){ if(!fly.on) return; const plain=item.replace(/-/g,""), shown=item.includes("-")?item.split("-").map((s,i)=>'<i class="syl'+(i%2)+'">'+s+'</i>').join(""):item;
+        await new Promise(async done=>{ let tries=0, finished=false;
+          st.innerHTML='<div class="lr-q">Lies laut vor:</div><div class="lr-big'+(step.kind==="Satz"?" sent":"")+'">'+shown+'</div><div class="lr-row"><button type="button" class="lr-mic">🎤 Ich lese!</button><button type="button" class="lr-help">🔊 Vorlesen</button></div><div class="lr-fb"></div>';
+          st.hidden=false; const fb=st.querySelector(".lr-fb");
+          const win=first=>{ if(finished) return; finished=true; sfx("good"); celebrate(); fly.reads++; if(first){ fly.readsFirst++; fly.boost+=2; fly.coins+=5; } else { fly.boost++; fly.coins+=2; } $("#fly-time").textContent="🪙 "+fly.coins;
+            fb.textContent=first?"⭐ Super gelesen! Turbo für das Rennen!":"👍 Gut gemacht!"; stopSpeaking(); sayChunk(first?"Super gelesen! Du bekommst Turbo für das Rennen!":"Gut gemacht!", .95); setTimeout(done,1600); };
+          const listen=async()=>{ if(finished) return; fb.textContent="🎤 Ich höre zu …"; st.querySelector(".lr-mic").disabled=true;
+            const alts=await roboListen(plain); if(!fly.on||finished) return; st.querySelector(".lr-mic").disabled=false; const ok=lrReadOk(plain,alts);
+            if(ok) return win(tries===0);
+            tries++;
+            if(ok===null && !SR){ fb.textContent="Lies es laut vor und tippe dann auf ✅."; return; }
+            if(tries>=2){ fb.textContent="Hör gut zu und sprich nach!"; stopSpeaking(); sayChunk("Hör gut zu: "+plain, .8); sayChunk("Jetzt du!", .95); await waitSpeech(9000); if(!fly.on||finished) return;
+              const alts2=await roboListen(plain); if(!fly.on||finished) return; if(lrReadOk(plain,alts2)) return win(false); fb.textContent="Prima versucht! Weiter geht's."; stopSpeaking(); sayChunk("Prima versucht! Weiter geht's.", .95); setTimeout(()=>{ if(!finished){ finished=true; done(); } },1800); return; }
+            fb.textContent=alts?"Fast! Versuch es nochmal.":"Ich habe nichts gehört. Nochmal!"; stopSpeaking(); sayChunk(alts?"Fast! Lies es nochmal laut vor.":"Ich habe dich nicht gehört. Lies es nochmal laut vor.", .9); await waitSpeech(6000); listen(); };
+          st.querySelector(".lr-mic").onclick=()=>{ stopSpeaking(); listen(); };
+          st.querySelector(".lr-help").onclick=()=>{ stopSpeaking(); sayChunk(plain, .8); tries++; };
+          if(!SR){ const ok=document.createElement("button"); ok.type="button"; ok.className="lr-ok"; ok.textContent="✅ Gelesen"; ok.onclick=()=>win(tries===0); st.querySelector(".lr-row").append(ok); }
+          stopSpeaking(); sayChunk(step.kind==="Wort"?"Lies das Wort laut vor!":"Lies den Satz laut vor!", .95); await waitSpeech(5000); listen(); }); }
+      st.hidden=true; fly.pi++; await waitSpeech(4000); next(); }
+    // --- Rennen ---
+    function race(step){ header("Rennen "+step.n+(step.final?" – Finale!":"")); fly.items=[]; fly.pos=0; fly.lane=0; fly.alt=0; fly.speed=0; fly.inv=0; fly.len=step.final?4.5:3.6;
+      fly.base=.2*(1+.06*step.n); fly.turbo=Math.min(6,fly.boost*1.2); fly.boost=0; fly.spawnD=.25;
+      fly.rivals=LR_COLS.slice(0,3).map((c,i)=>({pos:.15+i*.2,lane:i%2,speed:fly.base*(.72+i*.04),col:c,ch:2+Math.random()*3}));
+      stopSpeaking(); sayChunk("Rennen "+step.n+"! "+(fly.turbo>0?"Du hast Turbo vom Lesen! ":"")+"Tippe oben oder unten, um die Spur zu wechseln. Überhole die anderen Autos und sammle Münzen!");
+      const msg=$("#fly-msg"); drawLR(ctx,cv,false);
+      waitSpeech(9000).then(async()=>{ if(!fly.on) return; for(const c of ["3","2","1"]){ msg.textContent=c; sfx("tick"); await new Promise(r=>setTimeout(r,600)); if(!fly.on) return; }
+        msg.textContent="Los!"; setTimeout(()=>{ if(msg.textContent==="Los!") msg.textContent=""; },600); fly.playing=true; fly.last=performance.now(); fly.raf=requestAnimationFrame(loop); }); }
+    cv.onpointerdown=e=>{ if(!fly.playing) return; e.preventDefault(); const rc=cv.getBoundingClientRect(); const nl=(e.clientY-rc.top)<rc.height*.62?1:0; if(nl!==fly.lane){ fly.lane=nl; sfx("tick"); } };
+    fly.key=e=>{ if(!fly.playing) return; if(e.key==="ArrowUp") fly.lane=1; if(e.key==="ArrowDown") fly.lane=0; }; addEventListener("keydown",fly.key);
+    function loop(now){ if(!fly.on || !fly.playing) return; const dt=Math.min(.05,(now-fly.last)/1000); fly.last=now;
+      fly.turbo=Math.max(0,fly.turbo-dt); fly.inv=Math.max(0,fly.inv-dt);
+      const target=fly.base*(fly.turbo>0?1.55:1)*(fly.inv>0?.55:1); fly.speed+=(target-fly.speed)*Math.min(1,dt*2); const dx=fly.speed*dt; fly.pos+=dx; fly.scroll+=dx;
+      fly.alt+=(fly.lane-fly.alt)*Math.min(1,dt*8);
+      for(const h of fly.hills){ h.x-=dx*.3; if(h.x<-.2){ h.x+=1.4; h.h=.05+Math.random()*.08; } } for(const c of fly.clouds){ c.x-=dx*.1*c.s; if(c.x<-.2) c.x=1.2; }
+      for(const r of fly.rivals){ r.pos+=r.speed*dt; r.ch-=dt; if(r.ch<=0){ r.ch=2+Math.random()*3; r.lane=1-r.lane; } }
+      fly.spawnD-=dx; if(fly.spawnD<=0 && fly.pos<fly.len-.15){ fly.spawnD=.32; const l=Math.random()<.5?0:1;
+        if(Math.random()<.45) fly.items.push({k:"cone",lane:l,pos:fly.pos+.9}); for(let j=0;j<4;j++) fly.items.push({k:"coin",lane:1-l,pos:fly.pos+.85+j*.04}); }
+      const settled=Math.abs(fly.alt-fly.lane)<.3?fly.lane:-1;
+      for(const it of fly.items){ if(it.got || Math.abs(it.pos-fly.pos)>.03 || it.lane!==settled) continue;
+        if(it.k==="coin"){ it.got=1; fly.coins++; $("#fly-time").textContent="🪙 "+fly.coins; if(fly.coins%10===0) sfx("good"); }
+        else if(fly.inv<=0){ it.got=1; fly.inv=1.2; sfx("bad"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); } }
+      for(const r of fly.rivals){ if(fly.inv<=0 && r.lane===settled && r.pos-fly.pos>0 && r.pos-fly.pos<.05){ fly.inv=.6; sfx("bad"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); } }
+      fly.items=fly.items.filter(it=>it.pos>fly.pos-.3 && !(it.got && it.k==="coin"));
+      drawLR(ctx,cv,false);
+      if(fly.pos>=fly.len){ fly.playing=false; const place=1+fly.rivals.filter(r=>r.pos>fly.pos).length; fly.places.push(place); sfx("win"); if(place===1) celebrate();
+        stopSpeaking(); sayChunk(place===1?"Erster Platz! Super gefahren!":"Platz "+place+"! Beim nächsten Mal mit noch mehr Turbo vom Lesen!");
+        fly.pi++; waitSpeech(5000).then(()=>{ if(fly.on) next(); }); return; }
+      fly.raf=requestAnimationFrame(loop); }
+    function finish(){ $("#lr-st").hidden=true; const wins=fly.places.filter(p=>p===1).length, total=Math.max(1,fly.reads), ratio=fly.readsFirst/total;
+      const stars=ratio>=.8?3:ratio>=.5?2:1, b=bank.add(fly.coins,1);
+      $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-stars").textContent="🏆 "+"⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+fly.reads+" Lese-Aufgaben geschafft ("+fly.readsFirst+" gleich beim ersten Mal) und "+wins+" von "+fly.places.length+" Rennen gewonnen! 🪙 "+fly.coins+" Münzen. Schatzkiste: 🪙 "+b.coins+" · 🏆 "+b.trophies+".";
+      $("#fly-end").hidden=false; for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*300);
+      stopSpeaking(); sayChunk("Ziel! Du hast den Lese-Pokal gewonnen! Du kannst schon Buchstaben, Wörter"+(fly.plan.some(p=>p.kind==="Satz")?" und Sätze":"")+" lesen!"); }
+    fly.lrNext=next; next();
+  }
+  function drawLR(ctx,cv,station){ const W=cv.width, H=cv.height, d=devicePixelRatio, now=performance.now()/1000, gy=H*.86;
+    const g=ctx.createLinearGradient(0,0,0,gy); g.addColorStop(0,"#3a6fd8"); g.addColorStop(.6,"#8fd0f7"); g.addColorStop(1,"#d6f1ff"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#ffffffcc"; for(const c of fly.clouds){ const x=c.x*W, y=c.y*H+H*.1, r=H*.03*c.s; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.arc(x+r,y-r*.5,r*1.2,0,7); ctx.arc(x+r*2.1,y,r,0,7); ctx.fill(); }
+    const roadTop=H*.56; ctx.fillStyle="#86c96f"; for(const h of fly.hills){ ctx.beginPath(); ctx.ellipse(h.x*W,roadTop,W*.16,H*h.h*2.4,0,Math.PI,0); ctx.fill(); }
+    ctx.fillStyle="#6b8e4e"; ctx.fillRect(0,roadTop,W,H*.02); ctx.fillStyle="#454d63"; ctx.fillRect(0,roadTop+H*.02,W,H-roadTop);
+    const off=(fly.scroll*W*1.5)%(W*.14); ctx.fillStyle="#ffffffb0"; for(let x=-off;x<W;x+=W*.14) ctx.fillRect(x,H*.735,W*.07,H*.01);
+    ctx.fillStyle="#e2e2e2"; ctx.fillRect(0,roadTop+H*.02,W,H*.008); ctx.fillRect(0,H*.96,W,H*.008);
+    if(station){ ctx.fillStyle="#0006"; ctx.fillRect(0,0,W,H); return; }
+    const laneY=l=>l?H*.68:H*.86, PX=W*.25, sc=W*1.5, u=H*.0011;
+    // Zielflagge
+    const fx=PX+(fly.len-fly.pos)*sc; if(fx<W+50){ for(let i=0;i<12;i++) for(let j=0;j<2;j++){ ctx.fillStyle=(i+j)%2?"#fff":"#111"; ctx.fillRect(fx+j*H*.02,roadTop+H*.02+i*H*.035,H*.02,H*.035); } }
+    const things=[];
+    for(const it of fly.items){ if(it.got) continue; const x=PX+(it.pos-fly.pos)*sc; if(x<-80||x>W+80) continue; things.push({y:laneY(it.lane),f:()=>{ const y=laneY(it.lane);
+      if(it.k==="coin"){ const r=H*.022; ctx.fillStyle="#ffcc33"; ctx.beginPath(); ctx.ellipse(x,y-H*.05,r*Math.abs(Math.cos(now*4+it.pos*30))+r*.2,r,0,0,7); ctx.fill(); ctx.strokeStyle="#c98a00"; ctx.lineWidth=2*d; ctx.stroke(); }
+      else { const s=H*.05; ctx.fillStyle="#ff7a1a"; ctx.beginPath(); ctx.moveTo(x-s*.5,y); ctx.lineTo(x,y-s*1.3); ctx.lineTo(x+s*.5,y); ctx.fill(); ctx.fillStyle="#fff"; ctx.fillRect(x-s*.28,y-s*.7,s*.56,s*.16); ctx.fillStyle="#333"; ctx.fillRect(x-s*.6,y-s*.08,s*1.2,s*.1); } }}); }
+    for(const r of fly.rivals){ const x=PX+(r.pos-fly.pos)*sc; if(x<-200||x>W+200) continue; things.push({y:laneY(r.lane),f:()=>{ ctx.save(); ctx.translate(x,laneY(r.lane)-30*u); drawCar(ctx,u,now,fly.scroll*55,r.col); ctx.restore(); }}); }
+    const py=laneY(0)+(laneY(1)-laneY(0))*fly.alt;
+    things.push({y:py,f:()=>{ if(fly.inv>0 && Math.floor(now*10)%2===0) return; ctx.save(); ctx.translate(PX,py-30*u); drawCar(ctx,u,now,fly.scroll*55);
+      if(fly.turbo>0){ const f=60*u*(.8+Math.random()*.4); const gr=ctx.createLinearGradient(-100*u,0,-100*u-f,0); gr.addColorStop(0,"#ffffff"); gr.addColorStop(.3,"#9ff3ff"); gr.addColorStop(1,"#ff450000"); ctx.fillStyle=gr; ctx.beginPath(); ctx.moveTo(-98*u,-10*u); ctx.lineTo(-98*u-f,0); ctx.lineTo(-98*u,6*u); ctx.fill(); }
+      ctx.restore(); }});
+    things.sort((a,b)=>a.y-b.y).forEach(t=>t.f());
+    // Fortschritt + Platz
+    const place=1+fly.rivals.filter(r=>r.pos>fly.pos).length;
+    ctx.fillStyle="#0007"; ctx.beginPath(); ctx.roundRect(W*.3,H*.14,W*.4,H*.025,H*.012); ctx.fill(); ctx.fillStyle="#5ee6c4"; ctx.beginPath(); ctx.roundRect(W*.3,H*.14,W*.4*Math.min(1,fly.pos/fly.len),H*.025,H*.012); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(H*.045)+"px Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillText("Platz "+place+(fly.turbo>0?"  ⚡ Turbo":""),W/2,H*.18);
+    ctx.font="800 "+Math.round(16*d)+"px Nunito, sans-serif"; ctx.textAlign="left"; ctx.textBaseline="bottom"; ctx.fillText("⬆️ oben tippen = Spur oben   ⬇️ unten tippen = Spur unten",16*d,H-8*d);
   }
 
   /* ---------- Buchstaben-Rennen (pseudo-3D road) ---------- */
@@ -1808,7 +1947,7 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(H*.035)+"px Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(Math.round(fly.speed*160)+" km/h", W-W*.095, H-H*.07);
   }
 
-  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } if(key==="karussell"){ chooseFlightWord("karussell"); return; } if(key==="lauf"){ chooseFlightWord("lauf"); return; } if(key==="ballons"){ chooseFlightWord("ballons"); return; } if(key==="robo"){ chooseFlightWord("robo"); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
+  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } if(key==="karussell"){ chooseFlightWord("karussell"); return; } if(key==="lauf"){ chooseFlightWord("lauf"); return; } if(key==="ballons"){ chooseFlightWord("ballons"); return; } if(key==="robo"){ chooseFlightWord("robo"); return; } if(key==="lese"){ startLese(); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"&&v!=="chirp"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
