@@ -91,6 +91,25 @@ details[open]{display:grid;gap:8px}
 .lr-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .lr-row button{font:800 1.15rem Nunito,sans-serif;border:0;border-radius:999px;padding:12px 22px;background:#2a2160;color:#fff;cursor:pointer}
 .lr-row .lr-help{background:#e9e5ff;color:#2a2160}.lr-row .lr-ok{background:#2fb84a}
+.ld-st{width:min(94vw,820px);max-height:84vh;overflow:auto;top:56%}
+.ld-tips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.ld-tip{display:flex;align-items:center;gap:8px;font:800 1.3rem Nunito,sans-serif;border:3px solid #2a2160;border-radius:16px;background:#fff;padding:8px 14px;cursor:pointer}.ld-tip img{height:26px;border-radius:3px}
+.ld-slots{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+.ld-slot{width:clamp(34px,6vw,54px);height:clamp(44px,7.5vw,66px);border-bottom:5px solid #2a2160;font:800 clamp(1.6rem,4.5vw,2.6rem)/1.6 Nunito,sans-serif}.ld-slot.ok{color:#1d7f31}
+.ld-tiles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.ld-tile{width:clamp(46px,8vw,66px);height:clamp(46px,8vw,66px);border-radius:14px;border:3px solid #2a2160;background:#fff;font:800 clamp(1.5rem,4vw,2.3rem) Nunito,sans-serif;color:#2a2160;cursor:pointer;box-shadow:0 4px 0 #2a216055}
+.ld-tile.used{opacity:.25}.ld-tile.no{background:#ffb3b3;animation:shake .4s}
+.ld-name{font:800 clamp(2rem,6vw,3.4rem) Nunito,sans-serif}
+.ld-info{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:10px 0}
+.ld-flagemo{font-size:clamp(5rem,16vw,9rem);line-height:1}
+.ld-flag{width:min(40vw,260px);border-radius:10px;box-shadow:0 4px 14px #0004}
+.ld-map{width:min(46vw,320px);height:min(32vw,220px);min-height:160px;border-radius:14px;overflow:hidden;background:#cfe8ff;display:flex;align-items:center;justify-content:center;font:800 1.1rem Nunito,sans-serif}
+.ld-cap{font:800 clamp(1.1rem,3vw,1.6rem) Nunito,sans-serif;margin-bottom:10px}
+.ld-q{font:800 clamp(1.4rem,4vw,2.2rem) Nunito,sans-serif;margin:12px 0 18px}
+.ld-yn{display:flex;gap:24px;justify-content:center}
+.ld-yn button{width:clamp(120px,24vw,190px);height:clamp(110px,20vw,160px);border:0;border-radius:26px;font-size:clamp(2.4rem,7vw,3.6rem);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#fff}
+.ld-yn button span{font:800 clamp(1.2rem,3vw,1.7rem) Nunito,sans-serif}
+.ld-yes{background:#2fb84a;box-shadow:0 8px 0 #1d7f31}.ld-no{background:#e3263d;box-shadow:0 8px 0 #8f1022}
 .lr-fb{min-height:1.6em;margin-top:10px;font:800 1.2rem Nunito,sans-serif}
 .fly-word span.w{width:auto;padding:0 .45em;font-size:clamp(1rem,2.6vw,1.6rem)}
 .fly-word span.next{border-color:var(--mint);color:var(--mint)}
@@ -301,6 +320,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     <button class="game" data-game="reime"><span class="em">🎵</span><b>Reim-Rakete</b><small>Was reimt sich auf Maus?</small></button>
     <button class="game" data-game="wissen"><span class="em">🌍</span><b>Warum-Fragen</b><small>Warum ist der Himmel blau?</small></button>
     <button class="game" data-game="rennen"><span class="em">🏎️</span><b>Buchstaben-Rennen</b><small>Fahre schnell und sammle die richtigen Buchstaben!</small></button>
+    <button class="game" data-game="laender"><span class="em">🌍</span><b>Länder-Spiel</b><small>Land mit Buchstabe nennen, schreiben, Flagge, Karte und Hauptstadt entdecken</small></button>
     <button class="game" data-game="lese"><span class="em">🏁</span><b>Lese-Rallye</b><small>Lesen lernen und Rennen fahren: Buchstaben, Wörter, Sätze</small></button>
     <button class="game" data-game="robo"><span class="em">🤖</span><b>Robo-Flitzer</b><small>Auto fährt, Roboter fliegt – Buchstaben, Wörter und Sätze sammeln!</small></button>
     <button class="game" data-game="ballons"><span class="em">🎈</span><b>Buchstaben-Ballons</b><small>Ballons steigen langsam – tippe die richtigen Buchstaben!</small></button>
@@ -454,7 +474,7 @@ dialog p{margin:0 0 12px;color:#5a5296}
     for(const c of (list||[]).slice(0,4)){
       const b=document.createElement("button"); b.className="choice";
       const e=document.createElement("span"); e.className="em"; e.textContent=c.emoji||"⭐";
-      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : /karussell/i.test(c.text||"") ? chooseFlightWord("karussell") : /buchstaben-?lauf/i.test(c.text||"") ? chooseFlightWord("lauf") : /ballon/i.test(c.text||"") ? chooseFlightWord("ballons") : /robo/i.test(c.text||"") ? chooseFlightWord("robo") : /lese-?rallye/i.test(c.text||"") ? startLese() : send(c.text);
+      b.append(e, document.createTextNode(c.text||"")); b.onclick=()=> /buchstaben-?flug/i.test(c.text||"") ? chooseFlightWord("flug") : /buchstaben-?rennen|autorennen/i.test(c.text||"") ? chooseFlightWord("rennen") : /karussell/i.test(c.text||"") ? chooseFlightWord("karussell") : /buchstaben-?lauf/i.test(c.text||"") ? chooseFlightWord("lauf") : /ballon/i.test(c.text||"") ? chooseFlightWord("ballons") : /robo/i.test(c.text||"") ? chooseFlightWord("robo") : /lese-?rallye/i.test(c.text||"") ? startLese() : /länder/i.test(c.text||"") ? startLaender() : send(c.text);
       box.append(b);
     }
   }
@@ -1056,12 +1076,12 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#2a2160"; ctx.beginPath(); ctx.arc(s*.24,-s*.02,s*.06,0,7); ctx.arc(s*.48,-s*.02,s*.06,0,7); ctx.fill();
     ctx.restore();
   }
-  function endFlight(){ const cvx=$("#fly-cv"); cvx.onpointerdown=null; fly.sentence=null; const lrs=$("#lr-st"); if(lrs) lrs.hidden=true; $("#fly-jump").hidden=true; const fe=$("#fly"); fe.onpointerdown=fe.onpointerup=null; $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
-  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Lese-Rallye",emoji:"🏁"},{text:"Robo-Flitzer",emoji:"🤖"},{text:"Buchstaben-Ballons",emoji:"🎈"},{text:"Buchstaben-Lauf",emoji:"🏃"},{text:"Buchstaben-Karussell",emoji:"🎠"},{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
-  const restartMode=(m,w,e)=> m==="race"?startRace(w,e): m==="ring"?startRing(w,e): m==="run"?startRun(fly.words?.[0]||w,e): m==="balloon"?startBalloons(w,e): m==="robo"?startRobo(fly.plan?.[0]?.word||w,e): m==="lese"?startLese(): startFlight(w,e);
+  function endFlight(){ $("#fly-new").textContent="Neues Wort"; const cvx=$("#fly-cv"); cvx.onpointerdown=null; fly.sentence=null; const lrs=$("#lr-st"); if(lrs) lrs.hidden=true; const lds=$("#ld-st"); if(lds) lds.hidden=true; $("#fly-jump").hidden=true; const fe=$("#fly"); fe.onpointerdown=fe.onpointerup=null; $("#fly-brake").hidden=true; fly.braking=false; removeEventListener("keyup",fly.keyUp||(()=>{})); fly.on=false; fly.playing=false; cancelAnimationFrame(fly.raf); $("#fly").hidden=true; removeEventListener("resize",fly.fit||(()=>{})); removeEventListener("keydown",fly.key||(()=>{})); stopSpeaking(); }
+  $("#fly-x").onclick=$("#fly-back").onclick=()=>{ endFlight(); setBubble("Das war toll! Was wollen wir jetzt machen?"); renderChoices([{text:"Länder-Spiel",emoji:"🌍"},{text:"Lese-Rallye",emoji:"🏁"},{text:"Robo-Flitzer",emoji:"🤖"},{text:"Buchstaben-Ballons",emoji:"🎈"},{text:"Buchstaben-Lauf",emoji:"🏃"},{text:"Buchstaben-Karussell",emoji:"🎠"},{text:"Buchstaben-Flug",emoji:"🚀"},{text:"Tier-Rätsel",emoji:"🦁"},{text:"Zeig mir was",emoji:"🖼️"}]); };
+  const restartMode=(m,w,e)=> m==="race"?startRace(w,e): m==="ring"?startRing(w,e): m==="run"?startRun(fly.words?.[0]||w,e): m==="balloon"?startBalloons(w,e): m==="robo"?startRobo(fly.plan?.[0]?.word||w,e): m==="lese"?startLese(): m==="laender"?startLaender(): startFlight(w,e);
   $("#fly-again").onclick=()=>{ const w=fly.word, e=fly.easy, m=fly.mode; endFlight(); restartMode(m,w,e); };
   $("#fly-easy").onclick=()=>{ const w=fly.word, m=fly.mode; endFlight(); restartMode(m,w,true); };
-  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); if(m==="lese"){ startLese(); return; } chooseFlightWord(m==="race"?"rennen":m==="ring"?"karussell":m==="run"?"lauf":m==="balloon"?"ballons":m==="robo"?"robo":"flug"); };
+  $("#fly-new").onclick=()=>{ const m=fly.mode; endFlight(); if(m==="lese"){ startLese(); return; } if(m==="laender"){ startLaender(); return; } chooseFlightWord(m==="race"?"rennen":m==="ring"?"karussell":m==="run"?"lauf":m==="balloon"?"ballons":m==="robo"?"robo":"flug"); };
 
   /* ---------- Buchstaben-Karussell: Buchstaben drehen sich ums Wort, das Kind tippt in Reihenfolge ---------- */
   function startRing(word, easy){
@@ -1776,7 +1796,7 @@ Antworte NUR mit JSON in genau dieser Form:
       fly.raf=requestAnimationFrame(loop); }
     function finish(){ $("#lr-st").hidden=true; const wins=fly.places.filter(p=>p===1).length, total=Math.max(1,fly.reads), ratio=fly.readsFirst/total;
       const stars=ratio>=.8?3:ratio>=.5?2:1, b=bank.add(fly.coins,1);
-      $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-stars").textContent="🏆 "+"⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-easy").hidden=true; $("#fly-new").hidden=false; $("#fly-new").textContent="Neues Spiel"; $("#fly-stars").textContent="🏆 "+"⭐".repeat(stars)+"☆".repeat(3-stars);
       $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+fly.reads+" Lese-Aufgaben geschafft ("+fly.readsFirst+" gleich beim ersten Mal) und "+wins+" von "+fly.places.length+" Rennen gewonnen! 🪙 "+fly.coins+" Münzen. Schatzkiste: 🪙 "+b.coins+" · 🏆 "+b.trophies+".";
       $("#fly-end").hidden=false; for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*300);
       stopSpeaking(); sayChunk("Ziel! Du hast den Lese-Pokal gewonnen! Du kannst schon Buchstaben, Wörter"+(fly.plan.some(p=>p.kind==="Satz")?" und Sätze":"")+" lesen!"); }
@@ -1808,6 +1828,114 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#0007"; ctx.beginPath(); ctx.roundRect(W*.3,H*.14,W*.4,H*.025,H*.012); ctx.fill(); ctx.fillStyle="#5ee6c4"; ctx.beginPath(); ctx.roundRect(W*.3,H*.14,W*.4*Math.min(1,fly.pos/fly.len),H*.025,H*.012); ctx.fill();
     ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(H*.045)+"px Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillText("Platz "+place+(fly.turbo>0?"  ⚡ Turbo":""),W/2,H*.18);
     ctx.font="800 "+Math.round(16*d)+"px Nunito, sans-serif"; ctx.textAlign="left"; ctx.textBaseline="bottom"; ctx.fillText("⬆️ oben tippen = Spur oben   ⬇️ unten tippen = Spur unten",16*d,H-8*d);
+  }
+
+  /* ---------- Länder-Spiel: Buchstabe -> Land sagen -> Land schreiben -> Flagge, Karte, Hauptstadt -> Ja/Nein-Frage ---------- */
+  // [Name, ISO, Hauptstadt, Kontinent, lat, lng, zoom, WM 2026 (1=ja, 0=nein, null=unbekannt), Aliase]
+  const LD_DATA=[
+    ["Ägypten","eg","Kairo","Afrika",26.8,30.8,5,1,["aegypten","egypten"]],["Argentinien","ar","Buenos Aires","Südamerika",-38.4,-63.6,3,1],["Australien","au","Canberra","Australien",-25.3,133.8,3,1],["Algerien","dz","Algier","Afrika",28,1.7,4,1],
+    ["Brasilien","br","Brasília","Südamerika",-14.2,-51.9,3,1],["Belgien","be","Brüssel","Europa",50.5,4.5,7,1],["China","cn","Peking","Asien",35.9,104.2,3,0],["Chile","cl","Santiago","Südamerika",-35.7,-71.5,3,0],
+    ["Deutschland","de","Berlin","Europa",51.2,10.4,5,1],["Dänemark","dk","Kopenhagen","Europa",56.3,9.5,6,null,["daenemark"]],["Estland","ee","Tallinn","Europa",58.6,25,6,0],
+    ["Frankreich","fr","Paris","Europa",46.6,2.2,5,1],["Finnland","fi","Helsinki","Europa",64.9,26,4,0],["Griechenland","gr","Athen","Europa",39.1,22,6,0],["Ghana","gh","Accra","Afrika",7.9,-1,6,1],
+    ["Island","is","Reykjavík","Europa",64.9,-19,5,0],["Italien","it","Rom","Europa",42.5,12.5,5,null],["Indien","in","Neu-Delhi","Asien",21,78.9,4,0],["Irland","ie","Dublin","Europa",53.4,-8.2,6,null],
+    ["Japan","jp","Tokio","Asien",36.2,138.3,4,1],["Jordanien","jo","Amman","Asien",31.2,36.5,6,1],["Kanada","ca","Ottawa","Nordamerika",56.1,-106.3,3,1],["Kenia","ke","Nairobi","Afrika",0,37.9,5,0],
+    ["Kroatien","hr","Zagreb","Europa",45.1,15.2,6,1],["Kolumbien","co","Bogotá","Südamerika",4.6,-74.3,5,1],["Libanon","lb","Beirut","Asien",33.9,35.9,8,0],["Luxemburg","lu","Luxemburg","Europa",49.8,6.1,8,0],
+    ["Mexiko","mx","Mexiko-Stadt","Nordamerika",23.6,-102.6,4,1],["Marokko","ma","Rabat","Afrika",31.8,-7.1,5,1],["Norwegen","no","Oslo","Europa",64.5,11.5,4,1],["Niederlande","nl","Amsterdam","Europa",52.1,5.3,7,1,["holland"]],
+    ["Neuseeland","nz","Wellington","Australien",-41,174,5,1],["Österreich","at","Wien","Europa",47.5,14.6,6,1,["oesterreich"]],["Portugal","pt","Lissabon","Europa",39.4,-8.2,6,1],["Polen","pl","Warschau","Europa",51.9,19.1,5,null],
+    ["Russland","ru","Moskau","Europa",61.5,90,2,0],["Schweiz","ch","Bern","Europa",46.8,8.2,7,1],["Spanien","es","Madrid","Europa",40.5,-3.7,5,1],["Syrien","sy","Damaskus","Asien",34.8,39,6,0],["Schweden","se","Stockholm","Europa",62,15,4,null],
+    ["Türkei","tr","Ankara","Asien",39,35.2,5,null,["tuerkei","turkei"]],["Tunesien","tn","Tunis","Afrika",34,9.5,6,1],["Thailand","th","Bangkok","Asien",15.9,100.9,5,0],
+    ["USA","us","Washington","Nordamerika",39.8,-98.6,3,1,["amerika","vereinigte staaten","u s a"]],["Ukraine","ua","Kiew","Europa",48.4,31.2,5,null],["Ungarn","hu","Budapest","Europa",47.2,19.5,6,null],["Vietnam","vn","Hanoi","Asien",14.1,108.3,5,0],["Zypern","cy","Nikosia","Europa",35.1,33.4,8,0]
+  ].map(a=>({name:a[0],iso:a[1],cap:a[2],cont:a[3],lat:a[4],lng:a[5],z:a[6],wm:a[7],al:a[8]||[]}));
+  const ldNorm=t=>String(t).toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[^a-z ]/g," ").replace(/\s+/g," ").trim();
+  const ldFirst=n=>n[0].toUpperCase();
+  function ldFind(text){ const t=" "+ldNorm(text)+" "; return LD_DATA.find(c=>[c.name,...c.al].some(n=>t.includes(" "+ldNorm(n)+" "))); }
+  function ldLeaflet(){ if(window.L) return Promise.resolve(true); if(window.__ldL) return window.__ldL;
+    window.__ldL=new Promise(res=>{ const css=document.createElement("link"); css.rel="stylesheet"; css.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.append(css);
+      const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"; s.onload=()=>res(true); s.onerror=()=>res(false); document.head.append(s); setTimeout(()=>res(!!window.L),8000); });
+    return window.__ldL; }
+  function startLaender(){
+    stopSpeaking(); if(listening) rec?.stop();
+    const el=$("#fly"), cv=$("#fly-cv"), ctx=cv.getContext("2d"); el.hidden=false; $("#fly-end").hidden=true; $("#fly-easy").hidden=true; $("#fly-new").hidden=true; $("#fly-brake").hidden=true;
+    const rounds=5, letters=[...new Set(LD_DATA.map(c=>ldFirst(c.name)))].sort(()=>Math.random()-.5);
+    Object.assign(fly,{goldHearts:0, mode:"laender", on:true, playing:false, raf:0, mistakes:0, hearts:0, maxHearts:3, easy:false, activeT:0, word:"", idx:0, items:[], parts:[], round:0, rounds, letters, points:0, maxPoints:rounds*3, done:[]});
+    $("#fly-time").textContent="⭐ 0"; $("#fly-hearts").replaceChildren(); $("#fly-oops").hidden=true; $("#fly-msg").textContent="";
+    const fit=()=>{ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; drawBg(); }; fly.fit=fit; addEventListener("resize",fit);
+    function drawBg(){ const W=cv.width,H=cv.height; const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#13305e"); g.addColorStop(1,"#2d6fb5"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.globalAlpha=.12; ctx.font=Math.round(H*.5)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("🌍",W*.5,H*.55); ctx.globalAlpha=1; }
+    fit();
+    let st=$("#ld-st"); if(!st){ st=document.createElement("div"); st.id="ld-st"; st.className="lr-st ld-st"; el.append(st); } st.hidden=false;
+    const header=()=>{ const b=$("#fly-word"); b.replaceChildren(); const pic=document.createElement("b"); pic.className="fly-pic"; pic.textContent="🌍"; b.append(pic);
+      const s=document.createElement("span"); s.className="w next"; s.textContent="Länder-Spiel · Runde "+(fly.round+1)+"/"+rounds; b.append(s); };
+    const pts=n=>{ fly.points+=n; $("#fly-time").textContent="⭐ "+fly.points; };
+    const waitSpeech=ms=>Promise.race([speechDone(), new Promise(r=>setTimeout(r,ms))]);
+    async function round(){ if(!fly.on) return; if(fly.round>=rounds) return finish(); header();
+      const L=fly.letters[fly.round % fly.letters.length], opts=LD_DATA.filter(c=>ldFirst(c.name)===L && !fly.done.includes(c.name));
+      // 1) Land sagen
+      const land=await new Promise(done=>{ let tries=0, fin=false;
+        st.innerHTML='<div class="lr-q">Nenne ein Land mit</div><div class="lr-big">'+L+'</div><div class="lr-row"><button type="button" class="lr-mic">🎤 Land sagen</button><button type="button" class="lr-help">💡 Tipp</button></div><div class="ld-tips"></div><div class="lr-fb"></div>';
+        const fb=st.querySelector(".lr-fb");
+        const ok=c=>{ if(fin) return; fin=true; sfx("good"); if(!tries) pts(1); fb.textContent="✅ "+c.name+"!"; stopSpeaking(); sayChunk("Richtig! "+c.name+" fängt mit "+Lsay(L)+" an.", .95); setTimeout(()=>done(c),1500); };
+        const listen=async()=>{ if(fin) return; fb.textContent="🎤 Ich höre zu …"; const alts=await roboListen([]); if(!fly.on||fin) return;
+          const c=(alts||[]).map(ldFind).find(Boolean);
+          if(c && ldFirst(c.name)===L) return ok(c);
+          tries++;
+          if(c){ fb.textContent=c.name+" fängt mit "+ldFirst(c.name)+" an. Wir brauchen "+L+"!"; stopSpeaking(); sayChunk(c.name+" ist ein Land, aber es fängt mit "+Lsay(ldFirst(c.name))+" an. Wir brauchen ein Land mit "+Lsay(L)+".", .9); }
+          else { fb.textContent=alts?"Das kenne ich nicht. Nochmal, oder tippe auf 💡 Tipp!":"Ich habe nichts gehört. Tippe auf 🎤"; stopSpeaking(); sayChunk(alts?"Hmm, das kenne ich nicht als Land. Versuch es nochmal!":"Ich habe dich nicht gehört. Sag es nochmal!", .9); }
+          await waitSpeech(7000); if(!fly.on||fin) return;
+          if(tries>=3){ if(!st.querySelector(".ld-tip")) st.querySelector(".lr-help").click(); return; } listen(); };
+        st.querySelector(".lr-mic").onclick=()=>{ stopSpeaking(); listen(); };
+        st.querySelector(".lr-help").onclick=()=>{ tries++; const pick=[...opts].sort(()=>Math.random()-.5).slice(0,3);
+          st.querySelector(".ld-tips").innerHTML=pick.map(c=>'<button type="button" class="ld-tip" data-n="'+c.name+'"><img alt="" src="https://flagcdn.com/w80/'+c.iso+'.png"> '+c.name+'</button>').join("");
+          st.querySelectorAll(".ld-tip").forEach(b=>b.onclick=()=>ok(LD_DATA.find(c=>c.name===b.dataset.n)));
+          stopSpeaking(); sayChunk("Hier sind ein paar Länder mit "+Lsay(L)+". Welches nimmst du?", .9); };
+        stopSpeaking(); sayChunk("Nenne ein Land mit "+Lwie(L)+"!", .9); waitSpeech(5000).then(()=>{ if(!SR){ st.querySelector(".lr-help").click(); return; } listen(); }); });
+      if(!fly.on) return; fly.done.push(land.name);
+      // 2) Land schreiben (Buchstaben antippen)
+      await new Promise(done=>{ const name=land.name, chars=[...name.toUpperCase()]; let i=0, errs=0;
+        const extra=[...ALPHA].filter(c=>!chars.includes(c)).sort(()=>Math.random()-.5).slice(0,2);
+        const tiles=[...chars,...extra].map((c,k)=>({c,k})).sort(()=>Math.random()-.5);
+        st.innerHTML='<div class="lr-q">Schreib das Land:</div><div class="ld-slots">'+chars.map((c,k)=>'<span class="ld-slot" data-k="'+k+'"></span>').join("")+'</div><div class="ld-tiles">'+tiles.map(t=>'<button type="button" class="ld-tile" data-c="'+t.c+'">'+t.c+'</button>').join("")+'</div><div class="lr-row"><button type="button" class="lr-help">🔊 Hören</button></div><div class="lr-fb"></div>';
+        const slots=st.querySelectorAll(".ld-slot"), fb=st.querySelector(".lr-fb");
+        const disp=(c,k)=>k===0?c:c.toLowerCase();
+        st.querySelector(".lr-help").onclick=()=>{ stopSpeaking(); sayChunk(name+".", .85); sayLetters(name); };
+        st.querySelectorAll(".ld-tile").forEach(b=>b.onclick=()=>{ if(b.disabled) return; const c=b.dataset.c;
+          if(c===chars[i]){ sfx("tick"); slots[i].textContent=disp(c,i); slots[i].classList.add("ok"); b.disabled=true; b.classList.add("used"); i++;
+            if(i>=chars.length){ sfx("good"); if(!errs) pts(1); fb.textContent="✅ Super geschrieben!"; stopSpeaking(); sayChunk("Super! "+name+".", .95); setTimeout(done,1400); } }
+          else { errs++; sfx("bad"); b.classList.add("no"); setTimeout(()=>b.classList.remove("no"),500); stopSpeaking(); sayChunk("Nicht "+Lsay(c)+". Wir brauchen "+Lwie(chars[i])+".", .9); } });
+        stopSpeaking(); sayChunk("Jetzt schreib "+name+"!", .95); });
+      if(!fly.on) return;
+      // 3) Flagge, Karte, Hauptstadt
+      await new Promise(done=>{ st.innerHTML='<div class="ld-card"><div class="ld-name">'+land.name+'</div><div class="ld-info"><img class="ld-flag" alt="Flagge" src="https://flagcdn.com/w320/'+land.iso+'.png" onerror="this.outerHTML=\'<div class=ld-flagemo>'+String.fromCodePoint(...[...land.iso.toUpperCase()].map(c=>127397+c.charCodeAt(0)))+'</div>\'"><div id="ld-map" class="ld-map">🗺️</div></div>'+
+          '<div class="ld-cap">🏛️ Hauptstadt: <b>'+land.cap+'</b> · 🌍 '+land.cont+'</div></div><div class="lr-row"><button type="button" class="lr-mic ld-next">Weiter ➜</button></div>';
+        ldLeaflet().then(okL=>{ const m=$("#ld-map"); if(!okL||!m||!window.L){ if(m) m.textContent="🗺️ Karte nicht verfügbar"; return; } m.textContent="";
+          const map=L.map(m,{zoomControl:false,attributionControl:true,dragging:true,scrollWheelZoom:false}).setView([land.lat,land.lng],Math.max(2,land.z-1));
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:10,attribution:"© OpenStreetMap"}).addTo(map);
+          L.circleMarker([land.lat,land.lng],{radius:9,color:"#d7263d",fillColor:"#ff4d5e",fillOpacity:.9}).addTo(map); setTimeout(()=>map.invalidateSize(),200); });
+        stopSpeaking(); sayChunk("Das ist die Flagge von "+land.name+". Auf der Karte siehst du, wo "+land.name+" liegt, in "+land.cont+". Die Hauptstadt von "+land.name+" ist "+land.cap+".", .9);
+        st.querySelector(".ld-next").onclick=()=>{ stopSpeaking(); done(); }; });
+      if(!fly.on) return;
+      // 4) Ja/Nein-Frage
+      const qs=[];
+      if(land.wm!==null) qs.push({q:"Hat "+land.name+" bei der Fußball-WM 2026 mitgespielt?",a:!!land.wm,ex:land.name+(land.wm?" war bei der WM 2026 dabei.":" war bei der WM 2026 nicht dabei.")});
+      { const other=LD_DATA.filter(c=>c.name!==land.name)[Math.floor(Math.random()*(LD_DATA.length-1))]; const t=Math.random()<.5;
+        qs.push({q:"Ist "+(t?land.cap:other.cap)+" die Hauptstadt von "+land.name+"?",a:t,ex:"Die Hauptstadt von "+land.name+" ist "+land.cap+"."}); }
+      { const conts=["Europa","Asien","Afrika","Nordamerika","Südamerika","Australien"]; const t=Math.random()<.5, c=t?land.cont:conts.filter(x=>x!==land.cont)[Math.floor(Math.random()*5)];
+        qs.push({q:"Liegt "+land.name+" in "+c+"?",a:t,ex:land.name+" liegt in "+land.cont+"."}); }
+      const Q=qs[Math.floor(Math.random()*qs.length)];
+      await new Promise(done=>{ st.innerHTML='<div class="lr-q">Ja oder Nein?</div><div class="ld-q">'+Q.q+'</div><div class="ld-yn"><button type="button" class="ld-yes">✅<span>Ja</span></button><button type="button" class="ld-no">❌<span>Nein</span></button></div><div class="lr-fb"></div>';
+        const fb=st.querySelector(".lr-fb"); let answered=false;
+        const ans=v=>{ if(answered) return; answered=true; const right=v===Q.a; if(right){ sfx("good"); pts(1); celebrate(); } else sfx("bad");
+          fb.textContent=(right?"✅ Richtig! ":"❌ Leider falsch. ")+Q.ex; stopSpeaking(); sayChunk((right?"Richtig! ":"Leider falsch. ")+Q.ex, .9); waitSpeech(7000).then(()=>setTimeout(done,600)); };
+        st.querySelector(".ld-yes").onclick=()=>ans(true); st.querySelector(".ld-no").onclick=()=>ans(false);
+        stopSpeaking(); sayChunk(Q.q+" Drück Grün für Ja oder Rot für Nein.", .9); });
+      fly.round++; round(); }
+    function finish(){ st.hidden=true; const r=fly.points/fly.maxPoints, stars=r>=.8?3:r>=.5?2:1, b=bank.add(fly.points,1);
+      $("#fly-new").hidden=false; $("#fly-new").textContent="Neues Spiel"; $("#fly-easy").hidden=true; $("#fly-stars").textContent="🏆 "+"⭐".repeat(stars)+"☆".repeat(3-stars);
+      $("#fly-endtxt").textContent=(cfg.name?cfg.name+", du":"Du")+" hast "+fly.done.length+" Länder entdeckt: "+fly.done.join(", ")+". "+fly.points+" von "+fly.maxPoints+" Punkten!";
+      $("#fly-end").hidden=false; for(let i=0;i<stars;i++) setTimeout(()=>celebrate(),i*300);
+      stopSpeaking(); sayChunk("Super! Du hast "+fly.done.length+" Länder entdeckt: "+fly.done.join(", ")+"!");
+      const f="kennt die Länder "+fly.done.join(", "); if(!facts.includes(f)){ facts.push(f); if(facts.length>30) facts=facts.slice(-30); store.set("facts",facts); } }
+    round();
   }
 
   /* ---------- Buchstaben-Rennen (pseudo-3D road) ---------- */
@@ -1947,7 +2075,7 @@ Antworte NUR mit JSON in genau dieser Form:
     ctx.fillStyle="#fff"; ctx.font="800 "+Math.round(H*.035)+"px Nunito, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(Math.round(fly.speed*160)+" km/h", W-W*.095, H-H*.07);
   }
 
-  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } if(key==="karussell"){ chooseFlightWord("karussell"); return; } if(key==="lauf"){ chooseFlightWord("lauf"); return; } if(key==="ballons"){ chooseFlightWord("ballons"); return; } if(key==="robo"){ chooseFlightWord("robo"); return; } if(key==="lese"){ startLese(); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
+  function startGame(key){ $("#dlg-games").close(); if(key==="flug"){ chooseFlightWord("flug"); return; } if(key==="rennen"){ chooseFlightWord("rennen"); return; } if(key==="karussell"){ chooseFlightWord("karussell"); return; } if(key==="lauf"){ chooseFlightWord("lauf"); return; } if(key==="ballons"){ chooseFlightWord("ballons"); return; } if(key==="robo"){ chooseFlightWord("robo"); return; } if(key==="lese"){ startLese(); return; } if(key==="laender"){ startLaender(); return; } send("Lass uns spielen! "+GAMES[key]+" Erkläre das Spiel in einem Satz und fang direkt an.", true); }
 
   /* ---------- settings ---------- */
   function showTTS(){ const v=$("#p-tts").value; $("#tts-browser").hidden=v!=="browser"; $("#tts-gemini").hidden=v!=="gemini"&&v!=="chirp"; $("#tts-openai").hidden=v!=="openai"; $("#tts-eleven").hidden=v!=="eleven"; }
